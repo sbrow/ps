@@ -15,7 +15,7 @@ const (
 	Opts = "/nologo"
 )
 
-var PKGPATH = path.Join(os.Getenv("GOPATH"), "/src/github.com/sbrow/skirmish/ps")
+var PKGPATH = path.Join(os.Getenv("GOPATH"), "src", "github.com", "sbrow", "ps")
 
 func Start() error {
 	_, err := run("start")
