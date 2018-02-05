@@ -15,16 +15,20 @@ import (
 	"strings"
 )
 
-const (
-	Cmd  = "cscript.exe"
-	Opts = "/nologo"
-)
-
+var Cmd string
+var Opts string
 var pkgpath string
 
 func init() {
 	_, file, _, _ := runtime.Caller(0)
 	pkgpath = path.Dir(file)
+	switch runtime.GOOS {
+	case "windows":
+		Cmd = "cscript.exe"
+		Opts = "/nologo"
+	case "darwin":
+		Cmd = "osacript"
+	}
 }
 
 // Open photoshop.

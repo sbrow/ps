@@ -4,13 +4,16 @@ import (
 	"fmt"
 	_ "io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	_ "strings"
 	"testing"
 )
 
 func TestPkgPath(t *testing.T) {
-	fmt.Println(pkgpath)
+	out := filepath.Join(os.Getenv("GOPATH"), "src", "github.com", "sbrow", "ps")
+	if filepath.Join(pkgpath) != out {
+		t.Fatal(filepath.Join(pkgpath), out)
+	}
 }
 
 func TestOpen(t *testing.T) {
