@@ -1,9 +1,14 @@
+// +build windows
+
+// Package ps lets you manipulate Adobe Photoshop (CS5) from go.
+// This is primarily done by calling VBS/Applescript files.
+//
+// Currently only works on windows
 package ps
 
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
 	"path"
 	"runtime"
@@ -15,7 +20,13 @@ const (
 	Opts = "/nologo"
 )
 
-var PKGPATH = path.Join(os.Getenv("GOPATH"), "src", "github.com", "sbrow", "ps")
+// var PKGPATH = path.Join(os.Getenv("GOPATH"), "src", "github.com", "sbrow", "ps")
+var PKGPATH string
+
+func init() {
+	_, file, _, _ := runtime.Caller(0)
+	PKGPATH = path.Dir(file)
+}
 
 func Start() error {
 	_, err := run("start")
@@ -46,22 +57,19 @@ func Wait(msg string) {
 
 func run(name string, args ...string) ([]byte, error) {
 	var ext string
-	var dir string
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 
 	switch runtime.GOOS {
 	case "windows":
 		ext = ".vbs"
-		dir = "win"
 	case "darwin":
 		ext = ".applescript"
-		dir = "mac"
 	}
 	if !strings.HasSuffix(name, ext) {
 		name += ext
 	}
-	args = append([]string{Opts, path.Join(PKGPATH, dir, name)}, args...)
+	args = append([]string{Opts, path.Join(PKGPATH, "scripts", name)}, args...)
 	cmd := exec.Command(Cmd, args...)
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
