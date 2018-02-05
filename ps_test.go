@@ -3,13 +3,14 @@ package ps
 import (
 	"fmt"
 	_ "io/ioutil"
-	_ "path"
+	"os"
+	"path"
 	_ "strings"
 	"testing"
 )
 
 func TestPkgPath(t *testing.T) {
-	fmt.Println(PKGPATH)
+	fmt.Println(pkgpath)
 }
 
 // TODO: Comparison borked
@@ -22,6 +23,8 @@ func TestRun(t *testing.T) {
 	if string(msg) == string(out) {
 		fail := fmt.Sprintf("run(test)\ngot:\t\"%s\"\nwant:\t\"%s\"\n", msg, out)
 		t.Fatal(fail)
+	} else {
+		os.Remove(path.Join(pkgpath, "scripts", "test.txt"))
 	}
 }
 
@@ -36,7 +39,7 @@ func TestQuit(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestQuit\"")
 	}
-	Quit()
+	Quit(2)
 }
 
 func TestWait(t *testing.T) {

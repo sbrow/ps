@@ -20,30 +20,33 @@ const (
 	Opts = "/nologo"
 )
 
-// var PKGPATH = path.Join(os.Getenv("GOPATH"), "src", "github.com", "sbrow", "ps")
-var PKGPATH string
+var pkgpath string
 
 func init() {
 	_, file, _, _ := runtime.Caller(0)
-	PKGPATH = path.Dir(file)
+	pkgpath = path.Dir(file)
 }
 
+// Open photoshop.
 func Start() error {
 	_, err := run("start")
 	return err
 }
 
+// Open a file.
 func Open(path string) ([]byte, error) {
 	return run("open", path)
 }
 
+// Close the active document.
 func Close() error {
 	_, err := run("close")
 	return err
 }
 
-func Quit() ([]byte, error) {
-	return run("quit")
+// Quit photoshop with save status.
+func Quit(save int) ([]byte, error) {
+	return run("quit", string(save))
 }
 
 func Js(args ...string) ([]byte, error) {
@@ -69,7 +72,7 @@ func run(name string, args ...string) ([]byte, error) {
 	if !strings.HasSuffix(name, ext) {
 		name += ext
 	}
-	args = append([]string{Opts, path.Join(PKGPATH, "scripts", name)}, args...)
+	args = append([]string{Opts, path.Join(pkgpath, "scripts", name)}, args...)
 	cmd := exec.Command(Cmd, args...)
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
