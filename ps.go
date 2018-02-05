@@ -56,6 +56,7 @@ func Quit(save int) ([]byte, error) {
 func Js(args ...string) ([]byte, error) {
 	return run("dojs", args...)
 }
+
 func Wait(msg string) {
 	fmt.Print(msg)
 	var input string
