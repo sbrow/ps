@@ -1,5 +1,3 @@
-// +build windows
-
 // Package ps lets you manipulate Adobe Photoshop (CS5) from go.
 // This is primarily done by calling VBS/Applescript files.
 //
@@ -8,9 +6,12 @@ package ps
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -21,7 +22,7 @@ var pkgpath string
 
 func init() {
 	_, file, _, _ := runtime.Caller(0)
-	pkgpath = path.Dir(file)
+	pkgpath = filepath.Dir(file)
 	switch runtime.GOOS {
 	case "windows":
 		Cmd = "cscript.exe"
@@ -53,8 +54,29 @@ func Quit(save int) ([]byte, error) {
 	return run("quit", string(save))
 }
 
-func Js(args ...string) ([]byte, error) {
-	return run("dojs", args...)
+func Js(path string, args ...string) ([]byte, error) {
+	// Temp file for js to output to.
+	outpath := filepath.Join(os.Getenv("TEMP"), "js_out.txt")
+	args = append([]string{outpath}, args...)
+
+	// If passed a script by name, assume it's in the default folder.
+	if filepath.Dir(path) == "." {
+		path = filepath.Join(pkgpath, "scripts", path)
+	}
+
+	args = append([]string{path}, args...)
+	cmd, err := run("dojs", args...)
+	if err != nil {
+		return []byte{}, err
+	}
+	file, err := ioutil.ReadFile(outpath)
+	if err != nil {
+		// fmt.Println(cmd)
+		return cmd, err
+	}
+	cmd = append(cmd, file...)
+	// os.Remove(outpath)
+	return cmd, err
 }
 
 func Wait(msg string) {
@@ -66,7 +88,6 @@ func Wait(msg string) {
 func run(name string, args ...string) ([]byte, error) {
 	var ext string
 	var out bytes.Buffer
-	var stderr bytes.Buffer
 
 	switch runtime.GOOS {
 	case "windows":
@@ -77,10 +98,23 @@ func run(name string, args ...string) ([]byte, error) {
 	if !strings.HasSuffix(name, ext) {
 		name += ext
 	}
-	args = append([]string{Opts, path.Join(pkgpath, "scripts", name)}, args...)
+
+	if strings.Contains(name, "dojs") {
+		args = append([]string{Opts, filepath.Join(pkgpath, "scripts", name)},
+			args[0],
+			fmt.Sprintf("%s", strings.Join(args[1:], ",")),
+		)
+	} else {
+		args = append([]string{Opts, filepath.Join(pkgpath, "scripts", name)}, args...)
+	}
+
 	cmd := exec.Command(Cmd, args...)
 	cmd.Stdout = &out
-	cmd.Stderr = &stderr
+	cmd.Stderr = &out
 	err := cmd.Run()
-	return out.Bytes(), err
+	if err != nil {
+		return []byte{}, errors.New(string(out.Bytes()))
+	} else {
+		return out.Bytes(), err
+	}
 }

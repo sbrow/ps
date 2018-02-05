@@ -1,11 +1,10 @@
-var Path = arguments[0];
-alert(Path)
-var saveFile = File(Path + "/test.txt");
-
+var saveFile = File(arguments[0]);
 if(saveFile.exists)
     saveFile.remove();
 
 saveFile.encoding = "UTF8";
 saveFile.open("e", "TEXT", "????");
-saveFile.writeln("Testing...");
+for (var i = 0; i < arguments.length; i++) {
+	saveFile.writeln(arguments[i])
+}
 saveFile.close();
