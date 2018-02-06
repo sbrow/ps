@@ -1,7 +1,7 @@
-// Package ps lets you manipulate Adobe Photoshop (CS5) from go.
+// Package ps creates an interface between Adobe Photoshop (CS5) and go.
 // This is primarily done by calling VBS/Applescript files.
 //
-// Currently only works on windows
+// Currently only works on windows.
 package ps
 
 import (
@@ -39,8 +39,9 @@ func Start() error {
 }
 
 // Open a file.
-func Open(path string) ([]byte, error) {
-	return run("open", path)
+func Open(path string) error {
+	_, err := run("open", path)
+	return err
 }
 
 // Close the active document.
@@ -49,9 +50,13 @@ func Close() error {
 	return err
 }
 
-// Quit photoshop with save status.
-func Quit(save int) ([]byte, error) {
-	return run("quit", string(save))
+// Quits photoshop.
+//
+// There are 3 valid values for save: 1 (psSaveChanges), 2 (psDoNotSaveChanges),
+// 3 (psPromptToSaveChanges).
+func Quit(save int) error {
+	_, err := run("quit", string(save))
+	return err
 }
 
 func Js(path string, args ...string) ([]byte, error) {
@@ -79,6 +84,11 @@ func Js(path string, args ...string) ([]byte, error) {
 	return cmd, err
 }
 
+// Wait provides the user a message, and halts operation until the user
+// signals that they are ready (by pushing enter).
+//
+// Useful for when you need to do something by hand in the middle of an
+// automated process.
 func Wait(msg string) {
 	fmt.Print(msg)
 	var input string
