@@ -2,10 +2,8 @@ package ps
 
 import (
 	"fmt"
-	// "log"
 	"os"
 	"path/filepath"
-	_ "strings"
 	"testing"
 )
 
@@ -17,7 +15,10 @@ func TestPkgPath(t *testing.T) {
 }
 
 func TestStart(t *testing.T) {
-	Start()
+	err := Start()
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestOpen(t *testing.T) {
@@ -31,14 +32,23 @@ func TestOpen(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	Close()
+	if testing.Short() {
+		t.Skip("Skipping \"TestClose\"")
+	}
+	err := Close(2)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestQuit(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestQuit\"")
 	}
-	Quit(2)
+	err := Quit(2)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDoJs(t *testing.T) {
@@ -109,14 +119,14 @@ func TestLayers(t *testing.T) {
 }
 
 func TestLayer(t *testing.T) {
-	// lyr, err := Layer("Areas/TitleBackground")
-	_, err := Layer("Areas/TitleBackground")
+	lyr, err := Layer("Areas/TitleBackground")
+	// _, err := Layer("Areas/TitleBackground")
 	if err != nil {
 		t.Fatal(err)
 	}
-	/*	fmt.Println(lyr.Name)
-		fmt.Println(lyr.Bounds)
-	*/
+	fmt.Println(lyr.Name)
+	fmt.Println(lyr.Bounds)
+
 }
 
 func TestApplyDataset(t *testing.T) {
@@ -128,5 +138,16 @@ func TestApplyDataset(t *testing.T) {
 	if string(ret) != string(out) {
 		fail := fmt.Sprintf("TestJS failed.\ngot:\t\"%s\"\nwant:\t\"%s\"", ret, out)
 		t.Fatal(fail)
+	}
+	err = Quit(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDoJs_HideLayer(t *testing.T) {
+	_, err := DoJs("hideLayers.jsx", "Areas/TitleBackground")
+	if err != nil {
+		t.Fatal(err)
 	}
 }

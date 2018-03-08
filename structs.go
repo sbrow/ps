@@ -8,7 +8,12 @@ package ps
 type ArtLayer struct {
 	Name     string
 	TextItem string
-	Bounds   [2][2]string
+	Bounds   [2][2]int
+	LayerSet string
+}
+
+func (a *ArtLayer) SetVisible() {
+	DoJs("setLayerVisibility.jsx", a.LayerSet+"/"+a.Name, "true")
 }
 
 // func (a *ArtLayer) Name() string {

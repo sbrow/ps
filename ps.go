@@ -23,6 +23,19 @@ var Cmd string
 var Opts string
 var pkgpath string
 
+// PSSaveOptions is an enum for options when closing a document.
+type PSSaveOptions int
+
+func (p *PSSaveOptions) String() string {
+	return fmt.Sprint("", *p)
+}
+
+const (
+	PSSaveChanges         PSSaveOptions = 1
+	PSDoNotSaveChanges    PSSaveOptions = 2
+	PSPromptToSaveChanges PSSaveOptions = 3
+)
+
 func init() {
 	_, file, _, _ := runtime.Caller(0)
 	pkgpath = filepath.Dir(file)
@@ -42,8 +55,8 @@ func Start() error {
 }
 
 // Close closes the active document.
-func Close() error {
-	_, err := run("close")
+func Close(save PSSaveOptions) error {
+	_, err := run("close", save.String())
 	return err
 }
 
@@ -54,11 +67,8 @@ func Open(path string) error {
 }
 
 // Quit exits Photoshop.
-//
-// There are 3 valid values for save: 1 (psSaveChanges), 2 (psDoNotSaveChanges),
-// 3 (psPromptToSaveChanges).
-func Quit(save int) error {
-	_, err := run("quit", string(save))
+func Quit(save PSSaveOptions) error {
+	_, err := run("quit", save.String())
 	return err
 }
 
@@ -96,7 +106,6 @@ func DoJs(path string, args ...string) ([]byte, error) {
 // Useful for when you need to do something by hand in the middle of an
 // otherwise automated process.
 func Wait(msg string) {
-	fmt.Println()
 	fmt.Print(msg)
 	var input string
 	fmt.Scanln(&input)
