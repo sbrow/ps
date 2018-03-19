@@ -8,7 +8,6 @@ package ps
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -75,7 +74,7 @@ func Quit(save PSSaveOptions) error {
 // DoJs runs a Photoshop javascript script file (.jsx) from the specified location.
 // It can't directly return output, so instead the scripts write their output to
 // a temporary file.
-func DoJs(path string, args ...string) ([]byte, error) {
+func DoJs(path string, args ...string) (out []byte, err error) {
 	// Temp file for js to output to.
 	outpath := filepath.Join(os.Getenv("TEMP"), "js_out.txt")
 	defer os.Remove(outpath)
@@ -164,8 +163,8 @@ func SaveAs(path string) error {
 
 // Layers returns an array of ArtLayers from the active document
 // based on the given path string.
-func Layers(path string) ([]ArtLayer, error) {
-	byt, err := DoJs("getLayers.jsx", path)
+/*func Layers(path string) ([]ArtLayer, error) {
+	byt, err := DoJs("getLayers.jsx", JSLayer(path))
 	var out []ArtLayer
 	err = json.Unmarshal(byt, &out)
 	if err != nil {
@@ -173,15 +172,25 @@ func Layers(path string) ([]ArtLayer, error) {
 	}
 	return out, err
 }
-
-// Layer returns an ArtLayer from the active document given a specified
-// path string. Layer calls Layers() and returns the first result.
-func Layer(path string) (ArtLayer, error) {
-	lyrs, err := Layers(path)
-	return lyrs[0], err
-}
+*/
 
 // ApplyDataset fills out a template file with information from a given dataset (csv) file.
 func ApplyDataset(name string) ([]byte, error) {
 	return DoJs("applyDataset.jsx", name)
+}
+
+// JSLayer retrurns javascript code to get the layer with a given path.
+func JSLayer(path string) string {
+	pth := strings.Split(path, "/")
+	js := "app.activeDocument"
+	last := len(pth) - 1
+	if last > 0 {
+		for i := 0; i < last; i++ {
+			js += fmt.Sprintf(".layerSets.getByName('%s')", pth[i])
+		}
+	}
+	if pth[last] != "" {
+		js += fmt.Sprintf(".artLayers.getByName('%s')", pth[last])
+	}
+	return js + ";"
 }

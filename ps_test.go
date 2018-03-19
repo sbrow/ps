@@ -21,6 +21,7 @@ func TestStart(t *testing.T) {
 	}
 }
 
+/*
 func TestOpen(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestOpen\"")
@@ -30,7 +31,8 @@ func TestOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-
+*/
+/*
 func TestClose(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestClose\"")
@@ -106,29 +108,80 @@ func TestSaveAs(t *testing.T) {
 }
 
 func TestLayers(t *testing.T) {
-	byt, err := Layers("Areas/TitleBackground")
-	// _, err := Layers("Areas/TitleBackground")
+	l, err := Layers("Areas/TitleBackground/")
+	fmt.Println(l)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, lyr := range byt {
-		fmt.Println(lyr.Name)
-		fmt.Println(lyr.Bounds)
-	}
-
 }
-
+*/
+/*
 func TestLayer(t *testing.T) {
-	lyr, err := Layer("Areas/TitleBackground")
-	// _, err := Layer("Areas/TitleBackground")
+	_, err := Layer("Border/Inner Border")
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(lyr.Name)
-	fmt.Println(lyr.Bounds)
+}*/
+
+/*func TestMove(t *testing.T) {
+	lyr, err := Layer("Group 1/Layer 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	lyr.Position(100, 50, "top")
+}*/
+
+/*
+func TestLayerSet(t *testing.T) {
+	set, err := GetLayerSet("Indicators/")
+	fmt.Println(set)
+	fmt.Println(set.ArtLayers[0].Parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+*/
+
+func TestDocument(t *testing.T) {
+	d, err := GetDocument()
+	fmt.Println(d)
+	fmt.Println(d.ArtLayers[0])
+	fmt.Println(d.ArtLayers[0].Parent)
+	fmt.Println(d.LayerSets[0])
+	fmt.Println(d.LayerSets[0].Parent)
+	fmt.Println(d.LayerSets[0].ArtLayers[0])
+	fmt.Println(d.LayerSets[0].ArtLayers[0].Parent)
+	fmt.Println(d.LayerSets[0].ArtLayers[0].Parent.Parent())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d != d.ArtLayers[0].Parent {
+		t.Fatal("Fucked")
+	}
+	if d != d.LayerSets[0].Parent() {
+		t.Fatal("Fucked")
+	}
+	if d.LayerSets[0] != d.LayerSets[0].ArtLayers[0].Parent {
+		t.Fatal("Fucked")
+	}
 
 }
 
+/*func TestActiveDocument(t *testing.T) {
+	e, err := DoJs("compilejs.jsx", "alert('testing!')")
+	fmt.Println(string(e))
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := ActiveDocument()
+	fmt.Println(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+*/
+
+/*
 func TestApplyDataset(t *testing.T) {
 	out := []byte("done!\r\n")
 	ret, err := ApplyDataset("Anger")
@@ -144,10 +197,49 @@ func TestApplyDataset(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+*/
 
-func TestDoJs_HideLayer(t *testing.T) {
-	_, err := DoJs("hideLayers.jsx", "Areas/TitleBackground")
+/*func TestDoJs_HideLayer(t *testing.T) {
+	_, err := DoJs("setLayerVisibility.jsx", "Areas/TitleBackground", "false")
 	if err != nil {
 		t.Fatal(err)
+	}
+}*/
+
+//.8s
+//.15
+func BenchmarkHideLayer(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		// _, err := Layers("Areas/TitleBackground/")
+		// if err != nil {
+		// b.Fatal(err)
+		// }
+	}
+}
+
+// 59ns
+func BenchmarkHelloWorld_go(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		fmt.Sprintf("Hello, world!")
+	}
+}
+
+// ~35200000ns (.0352s)
+func BenchmarkHelloWorld_vbs(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := run("helloworld")
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// ~51700000 (0.0517)
+func BenchmarkHelloWorld_js(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := DoJs("test.jsx", "Hello, World!")
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
