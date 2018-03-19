@@ -181,7 +181,9 @@ func ApplyDataset(name string) ([]byte, error) {
 
 // JSLayer retrurns javascript code to get the layer with a given path.
 func JSLayer(path string) string {
+	path = strings.TrimLeft(path, "/")
 	pth := strings.Split(path, "/")
+	// fmt.Println(path)
 	js := "app.activeDocument"
 	last := len(pth) - 1
 	if last > 0 {

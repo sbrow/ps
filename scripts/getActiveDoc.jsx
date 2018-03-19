@@ -24,11 +24,7 @@ function lyrSets(sets, nm) {
 	for (var i = 0; i < sets.length; i++) {
 		var set = sets[i];
 		var name = nm + set.name + "/";
-		stdout.write('{"Name": "' + set.name + '", "LayerSets": [');
-		// lyrSets(set.layerSets, name);
-		stdout.write('], "ArtLayers": [');
-		layers(set.artLayers);
-		stdout.write(']}');
+		stdout.write('{"Name": "' + set.name + '"}');
 		if (i+1 != sets.length)
 			stdout.write(',');
 	}

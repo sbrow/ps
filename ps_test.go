@@ -2,11 +2,12 @@ package ps
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+	// "os"
+	// "path/filepath"
 	"testing"
 )
 
+/*
 func TestPkgPath(t *testing.T) {
 	out := filepath.Join(os.Getenv("GOPATH"), "src", "github.com", "sbrow", "ps")
 	if filepath.Join(pkgpath) != out {
@@ -21,7 +22,6 @@ func TestStart(t *testing.T) {
 	}
 }
 
-/*
 func TestOpen(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestOpen\"")
@@ -31,8 +31,7 @@ func TestOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-*/
-/*
+
 func TestClose(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestClose\"")
@@ -107,81 +106,55 @@ func TestSaveAs(t *testing.T) {
 	}
 }
 
-func TestLayers(t *testing.T) {
-	l, err := Layers("Areas/TitleBackground/")
-	fmt.Println(l)
+func TestLayerSet(t *testing.T) {
+	_, err := NewLayerSet("Areas/TitleBackground/")
 	if err != nil {
 		t.Fatal(err)
 	}
 }
-*/
-/*
+
 func TestLayer(t *testing.T) {
 	_, err := Layer("Border/Inner Border")
 	if err != nil {
 		t.Fatal(err)
 	}
-}*/
+}
 
-/*func TestMove(t *testing.T) {
+
+func TestMove(t *testing.T) {
 	lyr, err := Layer("Group 1/Layer 1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	lyr.Position(100, 50, "top")
-}*/
-
-/*
-func TestLayerSet(t *testing.T) {
-	set, err := GetLayerSet("Indicators/")
-	fmt.Println(set)
-	fmt.Println(set.ArtLayers[0].Parent)
-	if err != nil {
-		t.Fatal(err)
-	}
 }
 */
-
-func TestDocument(t *testing.T) {
-	d, err := GetDocument()
-	fmt.Println(d)
-	fmt.Println(d.ArtLayers[0])
-	fmt.Println(d.ArtLayers[0].Parent)
-	fmt.Println(d.LayerSets[0])
-	fmt.Println(d.LayerSets[0].Parent)
-	fmt.Println(d.LayerSets[0].ArtLayers[0])
-	fmt.Println(d.LayerSets[0].ArtLayers[0].Parent)
-	fmt.Println(d.LayerSets[0].ArtLayers[0].Parent.Parent())
+func TestActiveDocument(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping \"TestDocument\"")
+	}
+	d, err := ActiveDocument()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d != d.ArtLayers[0].Parent {
-		t.Fatal("Fucked")
+	if d != d.ArtLayers[0].Parent() {
+		fmt.Println(d)
+		fmt.Println(d.ArtLayers[0].Parent())
+		t.Fatal("ArtLayers do not have doc as parent.")
 	}
 	if d != d.LayerSets[0].Parent() {
-		t.Fatal("Fucked")
+		fmt.Println(d)
+		fmt.Println(d.LayerSets[0].Parent())
+		t.Fatal("LayerSets do not have doc as parent.")
 	}
-	if d.LayerSets[0] != d.LayerSets[0].ArtLayers[0].Parent {
-		t.Fatal("Fucked")
-	}
-
-}
-
-/*func TestActiveDocument(t *testing.T) {
-	e, err := DoJs("compilejs.jsx", "alert('testing!')")
-	fmt.Println(string(e))
-	if err != nil {
-		t.Fatal(err)
-	}
-	doc, err := ActiveDocument()
-	fmt.Println(doc)
-	if err != nil {
-		t.Fatal(err)
+	if d.LayerSets[0] != d.LayerSets[0].ArtLayers[0].Parent() {
+		fmt.Println(d.LayerSets[0])
+		fmt.Println(d.LayerSets[0].ArtLayers[0])
+		fmt.Println(d.LayerSets[0].ArtLayers[0].Parent())
+		t.Fatal("Layerset's ArtLayers do not have correct parents")
 	}
 }
-*/
 
-/*
 func TestApplyDataset(t *testing.T) {
 	out := []byte("done!\r\n")
 	ret, err := ApplyDataset("Anger")
@@ -197,14 +170,26 @@ func TestApplyDataset(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-*/
-
-/*func TestDoJs_HideLayer(t *testing.T) {
-	_, err := DoJs("setLayerVisibility.jsx", "Areas/TitleBackground", "false")
+func TestDoJs_HideLayer(t *testing.T) {
+	err := Open("F:\\GitLab\\dreamkeepers-psd\\Template009.1.psd")
 	if err != nil {
 		t.Fatal(err)
 	}
-}*/
+	lyr, err := NewLayerSet("Areas/TitleBackground")
+	lyr.SetVisible(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func BenchmarkDoc_Go(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := ActiveDocument()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
 
 //.8s
 //.15
