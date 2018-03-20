@@ -13,8 +13,8 @@ for (var i = 0; i < set.artLayers.length; i++) {
 }
 stdout.write('], "LayerSets": [')
 for (var i = 0; i < set.layerSets.length; i++) {
-	var set = set.layerSets[i];
-	stdout.write('{"Name": "'+ set.name +'"}');
+	var s = set.layerSets[i];
+	stdout.write('{"Name": "'+ s.name +'"}');
 	if (i < set.layerSets.length - 1)
 		stdout.writeln(",");
 }

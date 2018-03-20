@@ -1,8 +1,8 @@
 ﻿#include lib.js
 var stdout = newFile(arguments[0]);
 var doc = app.activeDocument;
-stdout.writeln(('{"Name": "' + doc.name +'", "Height":' +doc.height +
-               ', "Width":' + doc.width + ', "ArtLayers": [').replace(/ px/g, ""));
+stdout.writeln(('{"Name": "'+doc.name+'", "Height":'+doc.height+
+    ', "Width":'+doc.width+', "ArtLayers": [').replace(/ px/g, ""));
 function layers(lyrs) {
 	if (typeof lyrs === 'undefined')
 		return;
