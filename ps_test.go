@@ -159,8 +159,29 @@ func TestActiveDocument(t *testing.T) {
 		fmt.Println(d.layerSets[0].artLayers[0].Parent())
 		t.Fatal("Layerset's ArtLayers do not have correct parents")
 	}
+	// d.LayerSet("Areas").LayerSet("Bottom").ArtLayer("L Bar").SetColor(155, 255, 255)
+	lyr := d.LayerSet("Text").ArtLayer("speed")
+	if lyr == nil {
+		t.Fatal("lyr does not exist")
+	}
+	s := Stroke{Size: 4, Color: &RGB{0, 0, 0}}
+	lyr.SetStroke(s, &RGB{128, 128, 128})
+
 }
 
+/*
+func TestColor(t *testing.T) {
+	byt, err := run("colorLayer.vbs", "255", "255", "255")
+	fmt.Println(string(byt))
+	fmt.Println(err)
+	if err != nil {
+
+		t.Fatal()
+	}
+}
+*/
+
+/*
 func TestApplyDataset(t *testing.T) {
 	out := []byte("done!\r\n")
 	ret, err := ApplyDataset("	Anger")
@@ -174,6 +195,9 @@ func TestApplyDataset(t *testing.T) {
 }
 
 func TestDocumentLayerSet(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestDocumentLayerSet")
+	}
 	d, err := ActiveDocument()
 	if err != nil {
 		t.Fatal(err)
@@ -191,7 +215,7 @@ func TestDocumentLayerSet(t *testing.T) {
 		fmt.Println(lyr.name)
 	}
 }
-
+*/
 /*
 func TestDoJs_HideLayer(t *testing.T) {
 	err := Open("F:\\GitLab\\dreamkeepers-psd\\Template009.1.psd")

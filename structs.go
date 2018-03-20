@@ -1,12 +1,60 @@
 package ps
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"strings"
 )
+
+// Color represents a color.
+type Color interface {
+	RGB() [3]int
+}
+
+func Compare(a, b Color) Color {
+	A := a.RGB()
+	B := b.RGB()
+	Aavg := (A[0] + A[1] + A[2]) / 3
+	Bavg := (B[0] + B[1] + B[2]) / 3
+	if Aavg > Bavg {
+		return a
+	}
+	return b
+}
+
+// Color is a color in RGB format.
+type RGB struct {
+	Red   int
+	Green int
+	Blue  int
+}
+
+// RGB returns the color in RGB format.
+func (r *RGB) RGB() [3]int {
+	return [3]int{r.Red, r.Green, r.Blue}
+}
+
+// Hex is a color in hexidecimal format.
+type Hex []uint8
+
+func (h Hex) RGB() [3]int {
+	src := []byte(h)
+	dst := make([]byte, hex.DecodedLen(len(src)))
+	_, err := hex.Decode(dst, src)
+	if err != nil {
+		panic(err)
+	}
+	return [3]int{int(dst[0]), int(dst[1]), int(dst[2])}
+}
+
+// Stroke represents a layer stroke effect.
+type Stroke struct {
+	Size float32
+	Color
+}
 
 // Group represents a Document or LayerSet.
 type Group interface {
@@ -114,6 +162,8 @@ type ArtLayer struct {
 	bounds  [2][2]int
 	parent  Group
 	visible bool
+	Color
+	*Stroke
 }
 
 type ArtLayerJSON struct {
@@ -167,6 +217,61 @@ func (a *ArtLayer) SetParent(c Group) {
 	a.parent = c
 }
 
+// SetActive makes this layer active in photoshop.
+// Layers need to be active to perform certain operations
+func (a *ArtLayer) SetActive() ([]byte, error) {
+	js := fmt.Sprintf("app.activeDocument.activeLayer=%s", JSLayer(a.Path()))
+	return DoJs("compilejs.jsx", js)
+}
+
+// SetColor creates a color overlay for the layer
+func (a *ArtLayer) SetColor(c Color) {
+	a.Color = c
+	cols := c.RGB()
+	r := cols[0]
+	g := cols[1]
+	b := cols[2]
+	if a.Stroke != nil {
+		a.SetStroke(Stroke{a.Stroke.Size, a.Stroke.Color}, a.Color)
+		return
+	}
+	byt, err := a.SetActive()
+	if len(byt) != 0 {
+		log.Println(string(byt), "err")
+	}
+	if err != nil {
+		log.Panic(err)
+	}
+	byt, err = run("colorLayer", fmt.Sprint(r), fmt.Sprint(g), fmt.Sprint(b))
+	if len(byt) != 0 {
+		log.Println(string(byt), "err")
+	}
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
+	byt, err := a.SetActive()
+	if len(byt) != 0 {
+		log.Println(string(byt))
+	}
+	if err != nil {
+		log.Panic(err)
+	}
+	stkCol := stk.Color.RGB()
+	col := fill.RGB()
+	byt, err = run("colorStroke", fmt.Sprint(col[0]), fmt.Sprint(col[1]), fmt.Sprint(col[2]),
+		fmt.Sprintf("%.2f", stk.Size), fmt.Sprint(stkCol[0]), fmt.Sprint(stkCol[1]), fmt.Sprint(stkCol[2]))
+	if len(byt) != 0 {
+		log.Println(string(byt))
+	}
+	if err != nil {
+		log.Panic(err)
+	}
+
+}
+
 func (a *ArtLayer) Parent() Group {
 	return a.parent
 }
@@ -204,6 +309,10 @@ func (a *ArtLayer) Visible() bool {
 // Valid options for bound are: TL, TR, BL, BR
 // TODO: Improve
 func (a *ArtLayer) SetPos(x, y int, bound string) {
+	if !a.visible {
+		return
+	}
+
 	var lyrX, lyrY int
 	lyrX = a.X1()
 	if bound != "TL" {
