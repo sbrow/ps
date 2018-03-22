@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+var Colors map[string]Color = map[string]Color{
+	"Gray":  &RGB{128, 128, 128},
+	"White": &RGB{255, 255, 255},
+}
+
 // Color represents a color.
 type Color interface {
 	RGB() [3]int
