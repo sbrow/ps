@@ -184,7 +184,6 @@ func ApplyDataset(name string) ([]byte, error) {
 func JSLayer(path string) string {
 	path = strings.TrimLeft(path, "/")
 	pth := strings.Split(path, "/")
-	// fmt.Println(path)
 	js := "app.activeDocument"
 	last := len(pth) - 1
 	if last > 0 {

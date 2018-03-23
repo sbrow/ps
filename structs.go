@@ -1,65 +1,31 @@
 package ps
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-var Colors map[string]Color = map[string]Color{
-	"Gray":  &RGB{128, 128, 128},
-	"White": &RGB{255, 255, 255},
-}
+type ModeEnum int
 
-// Color represents a color.
-type Color interface {
-	RGB() [3]int
-}
+// Mode determines how aggressively ps will attempt to sync with Photoshop.
+var Mode ModeEnum
 
-func Compare(a, b Color) Color {
-	A := a.RGB()
-	B := b.RGB()
-	Aavg := (A[0] + A[1] + A[2]) / 3
-	Bavg := (B[0] + B[1] + B[2]) / 3
-	if Aavg > Bavg {
-		return a
-	}
-	return b
-}
+// Normal Mode Always checks to see if layers are updated
+// before returning them.
+const Normal ModeEnum = 0
 
-// Color is a color in RGB format.
-type RGB struct {
-	Red   int
-	Green int
-	Blue  int
-}
+// Safe Mode Always loads the document from scratch. (Slow)
+const Safe ModeEnum = 1
 
-// RGB returns the color in RGB format.
-func (r *RGB) RGB() [3]int {
-	return [3]int{r.Red, r.Green, r.Blue}
-}
-
-// Hex is a color in hexidecimal format.
-type Hex []uint8
-
-func (h Hex) RGB() [3]int {
-	src := []byte(h)
-	dst := make([]byte, hex.DecodedLen(len(src)))
-	_, err := hex.Decode(dst, src)
-	if err != nil {
-		panic(err)
-	}
-	return [3]int{int(dst[0]), int(dst[1]), int(dst[2])}
-}
-
-// Stroke represents a layer stroke effect.
-type Stroke struct {
-	Size float32
-	Color
-}
+// Fast mode never checks layers before returning.
+const Fast ModeEnum = 2
 
 // Group represents a Document or LayerSet.
 type Group interface {
@@ -69,6 +35,8 @@ type Group interface {
 	Path() string
 	ArtLayers() []*ArtLayer
 	LayerSets() []*LayerSet
+	MarshalJSON() ([]byte, error)
+	UnmarshalJSON(b []byte) error
 }
 
 // Document represents a Photoshop document (PSD file).
@@ -88,6 +56,11 @@ type DocumentJSON struct {
 	LayerSets []*LayerSet
 }
 
+func (d *Document) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&DocumentJSON{Name: d.name, Height: d.height,
+		Width: d.width, ArtLayers: d.artLayers, LayerSets: d.layerSets})
+}
+
 func (d *Document) UnmarshalJSON(b []byte) error {
 	tmp := &DocumentJSON{}
 	if err := json.Unmarshal(b, &tmp); err != nil {
@@ -97,7 +70,13 @@ func (d *Document) UnmarshalJSON(b []byte) error {
 	d.height = tmp.Height
 	d.width = tmp.Width
 	d.artLayers = tmp.ArtLayers
+	for _, lyr := range d.artLayers {
+		lyr.SetParent(d)
+	}
 	d.layerSets = tmp.LayerSets
+	for _, set := range d.layerSets {
+		set.SetParent(d)
+	}
 	return nil
 }
 
@@ -141,10 +120,37 @@ func (d *Document) Path() string {
 	return ""
 }
 
+// Filename returns the path to the json file for this document.
+func (d *Document) Filename() string {
+	_, dir, _, ok := runtime.Caller(0)
+	if !ok {
+		log.Panic("No caller information")
+	}
+	return filepath.Join(filepath.Dir(dir), "data",
+		strings.TrimRight(string(d.name), "\r\n")+".txt")
+}
+
 func ActiveDocument() (*Document, error) {
-	log.Println("Loading ActiveDoucment/")
-	byt, err := DoJs("getActiveDoc.jsx")
-	var d *Document
+	log.Println("Loading ActiveDoucment")
+	d := &Document{}
+
+	byt, err := DoJs("activeDocName.jsx")
+	if err != nil {
+		return nil, err
+	}
+	d.name = string(byt)
+	if Mode != 1 {
+		byt, err = ioutil.ReadFile(d.Filename())
+		if err == nil {
+			log.Println("Previous version found, loading")
+			err = json.Unmarshal(byt, &d)
+			if err == nil {
+				return d, err
+			}
+		}
+	}
+	log.Println("Loading manually (This could take awhile)")
+	byt, err = DoJs("getActiveDoc.jsx")
 	err = json.Unmarshal(byt, &d)
 	for _, lyr := range d.artLayers {
 		lyr.SetParent(d)
@@ -155,27 +161,55 @@ func ActiveDocument() (*Document, error) {
 			log.Fatal(err)
 		}
 		d.layerSets[i] = s
-		// s.SetParent(d)
+		s.SetParent(d)
 	}
+	d.Dump()
 	return d, err
+}
+
+func (d *Document) Dump() {
+	f, err := os.Create(d.Filename())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	byt, err := json.MarshalIndent(d, "", "\t")
+	if err != nil {
+		log.Fatal(err)
+	}
+	f.Write(byt)
 }
 
 // ArtLayer represents an Art Layer in a photoshop document.
 type ArtLayer struct {
-	name string
+	name string // The layer's name.
 	// TextItem  string
-	bounds  [2][2]int
-	parent  Group
-	visible bool
-	Color
-	*Stroke
+	bounds  [2][2]int // The layers' corners.
+	parent  Group     // The LayerSet/Document this layer is in.
+	visible bool      // Whether or not the layer is visible.
+	current bool      // Whether we've checked this layer since we loaded from disk.
+	Color             // The layer's color overlay.
+	*Stroke           // The layer's stroke.
 }
 
 type ArtLayerJSON struct {
-	Name    string
-	Bounds  [2][2]int
-	Parent  Group
-	Visible bool
+	Name      string
+	Bounds    [2][2]int
+	Visible   bool
+	Color     [3]int
+	Stroke    [3]int
+	StrokeAmt float32
+}
+
+func (a *ArtLayer) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&ArtLayerJSON{
+		Name:      a.name,
+		Bounds:    a.bounds,
+		Visible:   a.visible,
+		Color:     a.Color.RGB(),
+		Stroke:    a.Stroke.RGB(),
+		StrokeAmt: a.Stroke.Size,
+	})
 }
 
 func (a *ArtLayer) UnmarshalJSON(b []byte) error {
@@ -185,8 +219,10 @@ func (a *ArtLayer) UnmarshalJSON(b []byte) error {
 	}
 	a.name = tmp.Name
 	a.bounds = tmp.Bounds
-	a.parent = tmp.Parent
+	a.Color = RGB{tmp.Color[0], tmp.Color[1], tmp.Color[2]}
+	a.Stroke = &Stroke{tmp.StrokeAmt, RGB{tmp.Stroke[0], tmp.Stroke[1], tmp.Stroke[2]}}
 	a.visible = tmp.Visible
+	a.current = false
 	return nil
 }
 
@@ -231,20 +267,25 @@ func (a *ArtLayer) SetActive() ([]byte, error) {
 
 // SetColor creates a color overlay for the layer
 func (a *ArtLayer) SetColor(c Color) {
+	if Mode == 2 && a.Color.RGB() == c.RGB() {
+		return
+	}
+	if a.Stroke.Size != 0 {
+		a.SetStroke(*a.Stroke, c)
+		return
+	}
 	a.Color = c
-	cols := c.RGB()
+	cols := a.Color.RGB()
+	log.Printf(`Setting layer "%s" to color %v`, a.name, cols)
 	r := cols[0]
 	g := cols[1]
 	b := cols[2]
-	if a.Stroke != nil {
-		a.SetStroke(Stroke{a.Stroke.Size, a.Stroke.Color}, a.Color)
-		return
-	}
 	byt, err := a.SetActive()
 	if len(byt) != 0 {
 		log.Println(string(byt), "err")
 	}
 	if err != nil {
+		log.Println(a.Path())
 		log.Panic(err)
 	}
 	byt, err = run("colorLayer", fmt.Sprint(r), fmt.Sprint(g), fmt.Sprint(b))
@@ -257,6 +298,13 @@ func (a *ArtLayer) SetColor(c Color) {
 }
 
 func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
+	if Mode == 2 {
+		if stk.Size == a.Stroke.Size && stk.Color.RGB() == a.Color.RGB() {
+			if a.Color.RGB() == fill.RGB() {
+				return
+			}
+		}
+	}
 	byt, err := a.SetActive()
 	if len(byt) != 0 {
 		log.Println(string(byt))
@@ -264,8 +312,12 @@ func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
 	if err != nil {
 		log.Panic(err)
 	}
+	a.Stroke = &stk
+	a.Color = fill
 	stkCol := stk.Color.RGB()
 	col := fill.RGB()
+	log.Printf("Setting layer %s stroke to %.2fpt %v and color to %v\n", a.name, a.Stroke.Size,
+		a.Stroke.Color.RGB(), a.Color.RGB())
 	byt, err = run("colorStroke", fmt.Sprint(col[0]), fmt.Sprint(col[1]), fmt.Sprint(col[2]),
 		fmt.Sprintf("%.2f", stk.Size), fmt.Sprint(stkCol[0]), fmt.Sprint(stkCol[1]), fmt.Sprint(stkCol[2]))
 	if len(byt) != 0 {
@@ -274,7 +326,6 @@ func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
 	if err != nil {
 		log.Panic(err)
 	}
-
 }
 
 func (a *ArtLayer) Parent() Group {
@@ -299,9 +350,16 @@ func Layer(path string) (ArtLayer, error) {
 
 // SetVisible makes the layer visible.
 func (a *ArtLayer) SetVisible(b bool) {
+	if a.Visible() == b {
+		return
+	}
+	if b {
+		log.Printf("Showing %s", a.name)
+	} else {
+		log.Printf("Hiding %s", a.name)
+	}
 	js := fmt.Sprintf("%s.visible=%v;",
 		strings.TrimRight(JSLayer(a.Path()), ";"), b)
-	log.Printf("Setting %s.Visible to %v\n", a.name, b)
 	DoJs("compilejs.jsx", js)
 }
 
@@ -314,6 +372,9 @@ func (a *ArtLayer) Visible() bool {
 // Valid options for bound are: TL, TR, BL, BR
 // TODO: Improve
 func (a *ArtLayer) SetPos(x, y int, bound string) {
+	if x == 0 && y == 0 {
+		return
+	}
 	if !a.visible {
 		return
 	}
@@ -326,24 +387,34 @@ func (a *ArtLayer) SetPos(x, y int, bound string) {
 		lyrY = a.Y1()
 	}
 	byt, err := DoJs("moveLayer.jsx", JSLayer(a.Path()), fmt.Sprint(x-lyrX), fmt.Sprint(y-lyrY))
+	var bounds [2][2]int
 	if err != nil {
 		panic(err)
 	}
-	json.Unmarshal(byt, &a)
+	json.Unmarshal(byt, bounds)
+	a.bounds = bounds
 }
 
 type LayerSet struct {
 	name      string
 	parent    Group
+	current   bool // Whether we've checked this layer since we loaded from disk.
 	artLayers []*ArtLayer
 	layerSets []*LayerSet
 }
 
 type LayerSetJSON struct {
 	Name      string
-	Parent    Group
 	ArtLayers []*ArtLayer
 	LayerSets []*LayerSet
+}
+
+func (l *LayerSet) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&LayerSetJSON{
+		Name:      l.name,
+		ArtLayers: l.artLayers,
+		LayerSets: l.layerSets,
+	})
 }
 
 func (l *LayerSet) UnmarshalJSON(b []byte) error {
@@ -352,9 +423,15 @@ func (l *LayerSet) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	l.name = tmp.Name
-	l.parent = tmp.Parent
 	l.artLayers = tmp.ArtLayers
+	for _, lyr := range l.artLayers {
+		lyr.SetParent(l)
+	}
 	l.layerSets = tmp.LayerSets
+	for _, set := range l.layerSets {
+		set.SetParent(l)
+	}
+	l.current = false
 	return nil
 }
 
@@ -363,6 +440,11 @@ func (l *LayerSet) Name() string {
 }
 
 func (l *LayerSet) ArtLayers() []*ArtLayer {
+	for i := 0; i < len(l.artLayers); i++ {
+		if l.artLayers[i] != nil && !l.artLayers[i].current {
+			l.artLayers[i] = l.ArtLayer(l.artLayers[i].name)
+		}
+	}
 	return l.artLayers
 }
 
@@ -371,6 +453,18 @@ func (l *LayerSet) ArtLayers() []*ArtLayer {
 func (l *LayerSet) ArtLayer(name string) *ArtLayer {
 	for _, lyr := range l.artLayers {
 		if lyr.name == name {
+			if Mode == 0 && !lyr.current {
+				byt, err := DoJs("getLayer.jsx", JSLayer(lyr.Path()))
+				if err != nil {
+					log.Panic(err)
+				}
+				var lyr2 *ArtLayer
+				err = json.Unmarshal(byt, &lyr2)
+				lyr.name = lyr2.name
+				lyr.bounds = lyr2.bounds
+				lyr.visible = lyr2.visible
+				lyr.current = true
+			}
 			return lyr
 		}
 	}
@@ -408,11 +502,13 @@ func (l *LayerSet) Path() string {
 }
 
 func NewLayerSet(path string, g Group) (*LayerSet, error) {
+	path = strings.Replace(path, "//", "/", -1)
 	byt, err := DoJs("getLayerSet.jsx", JSLayer(path))
 	var out *LayerSet
 	err = json.Unmarshal(byt, &out)
 	if flag.Lookup("test.v") != nil {
-		// log.Println(string(byt))
+		// log.Println(path)
+		// log.Println(out)
 	}
 	out.SetParent(g)
 	log.Printf("Loading ActiveDocument/%s\n", out.Path())
@@ -423,7 +519,6 @@ func NewLayerSet(path string, g Group) (*LayerSet, error) {
 		lyr.SetParent(out)
 	}
 	for i, set := range out.layerSets {
-		// log.Println("\t", set.name)
 		s, err := NewLayerSet(fmt.Sprintf("%s%s/", path, set.Name()), out)
 		if err != nil {
 			log.Fatal(err)

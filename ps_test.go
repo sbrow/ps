@@ -1,7 +1,9 @@
 package ps
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -112,9 +114,8 @@ func TestSaveAs(t *testing.T) {
 	os.Remove("F:\\TEMP\\test.png")
 }
 
-/*
 func TestLayerSet(t *testing.T) {
-	_, err := NewLayerSet("Areas/TitleBackground/")
+	_, err := NewLayerSet("Areas/TitleBackground/", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,9 +133,9 @@ func TestMove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lyr.Position(100, 50, "top")
+	lyr.SetPos(100, 50, "TL")
 }
-*/
+
 func TestActiveDocument(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestDocument\"")
@@ -166,10 +167,8 @@ func TestActiveDocument(t *testing.T) {
 	}
 	s := Stroke{Size: 4, Color: &RGB{0, 0, 0}}
 	lyr.SetStroke(s, &RGB{128, 128, 128})
-
 }
 
-/*
 func TestColor(t *testing.T) {
 	byt, err := run("colorLayer.vbs", "255", "255", "255")
 	fmt.Println(string(byt))
@@ -179,9 +178,7 @@ func TestColor(t *testing.T) {
 		t.Fatal()
 	}
 }
-*/
 
-/*
 func TestApplyDataset(t *testing.T) {
 	out := []byte("done!\r\n")
 	ret, err := ApplyDataset("	Anger")
@@ -215,20 +212,40 @@ func TestDocumentLayerSet(t *testing.T) {
 		fmt.Println(lyr.name)
 	}
 }
-*/
-/*
+
+func TestLoadedDoc(t *testing.T) {
+	var d *Document
+	byt, err := ioutil.ReadFile("Document.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = json.Unmarshal(byt, &d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d != d.ArtLayers()[0].Parent() {
+		t.Fatal("Loaded document's ArtLayers do not point to doc")
+	}
+	if d != d.LayerSets()[0].Parent() {
+		t.Fatal("Loaded document's LayerSets do not point to doc")
+	}
+	if d.LayerSets()[0] != d.layerSets[0].artLayers[0].Parent() {
+		t.Fatal("Loaded document's LayerSet's ArtLayers do not point to layerSets")
+	}
+}
+
 func TestDoJs_HideLayer(t *testing.T) {
 	err := Open("F:\\GitLab\\dreamkeepers-psd\\Template009.1.psd")
 	if err != nil {
 		t.Fatal(err)
 	}
-	lyr, err := NewLayerSet("Areas/TitleBackground")
+	lyr, err := NewLayerSet("Areas/TitleBackground", nil)
 	lyr.SetVisible(false)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
-*/
+
 func BenchmarkDoc_Go(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := ActiveDocument()
