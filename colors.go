@@ -9,11 +9,16 @@ var Colors map[string]Color = map[string]Color{
 	"White": &RGB{255, 255, 255},
 }
 
-// Color represents a color.
+// Color is an interface for color objects, allowing colors to be
+// used in various formats.
+//
+// RGB is the default format for everything.
 type Color interface {
-	RGB() [3]int
+	RGB() [3]int  // The color in RGB format.
+	Hex() []uint8 // The color in hexadecimal format.
 }
 
+// Compare determines which of two colors is "brighter".
 func Compare(a, b Color) Color {
 	A := a.RGB()
 	B := b.RGB()
@@ -25,7 +30,7 @@ func Compare(a, b Color) Color {
 	return b
 }
 
-// Color is a color in RGB format.
+// RGB is a color in RGB format. It fulfills the Color interface.
 type RGB struct {
 	Red   int
 	Green int
@@ -37,7 +42,12 @@ func (r RGB) RGB() [3]int {
 	return [3]int{r.Red, r.Green, r.Blue}
 }
 
-// Hex is a color in hexidecimal format.
+// TODO: Implement RGB.Hex()
+func (r RGB) Hex() []uint8 {
+	return make([]uint8, 6)
+}
+
+// Hex is a color in hexadecimal format. It fulfills the Color interface.
 type Hex []uint8
 
 func (h Hex) RGB() [3]int {
@@ -48,6 +58,10 @@ func (h Hex) RGB() [3]int {
 		panic(err)
 	}
 	return [3]int{int(dst[0]), int(dst[1]), int(dst[2])}
+}
+
+func (h Hex) Hex() []uint8 {
+	return h
 }
 
 // Stroke represents a layer stroke effect.

@@ -1,7 +1,7 @@
-// Package ps is a rudimentary API between Adobe Photoshop and go.
+// Package ps is a rudimentary API between Adobe Photoshop CS5 and Golang.
 //
 // Most of the interaction between the two is implemented via
-// javascript and/or VBS/Applescript.
+// Javascript and/or VBS/Applescript.
 //
 // Currently only works with CS5 on Windows.
 package ps
@@ -54,30 +54,41 @@ func Start() error {
 	return err
 }
 
-// Close closes the active document.
+// Close closes the active document in Photoshop.
 func Close(save PSSaveOptions) error {
 	_, err := run("close", save.String())
 	return err
 }
 
-// Open opens a file with the specified path.
+// Open opens a Photoshop document with the specified path.
+// If Photoshop is not currently running, it is started before
+// opening the document
 func Open(path string) error {
 	_, err := run("open", path)
 	return err
 }
 
-// Quit exits Photoshop.
+// Quit exits Photoshop with the given saving option.
 func Quit(save PSSaveOptions) error {
 	_, err := run("quit", save.String())
 	return err
 }
 
-// DoJs runs a Photoshop javascript script file (.jsx) from the specified location.
+// SaveAs saves the Photoshop document to the given location.
+func SaveAs(path string) error {
+	_, err := run("save", path)
+	return err
+}
+
+// DoJs runs a Photoshop Javascript script file (.jsx) from the specified location.
 // It can't directly return output, so instead the scripts write their output to
-// a temporary file.
+// a temporary file, whose contents is then read and returned.
 func DoJs(path string, args ...string) (out []byte, err error) {
 	// Temp file for js to output to.
 	outpath := filepath.Join(os.Getenv("TEMP"), "js_out.txt")
+	if !strings.HasSuffix(path, ".jsx") {
+		path += ".jsx"
+	}
 	defer os.Remove(outpath)
 
 	args = append([]string{outpath}, args...)
@@ -150,15 +161,9 @@ func run(name string, args ...string) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-// DoAction runs a Photoshop action with name from set.
+// DoAction runs the Photoshop action with name from set.
 func DoAction(set, name string) error {
 	_, err := run("action", set, name)
-	return err
-}
-
-// SaveAs saves the Photoshop document file to the given location.
-func SaveAs(path string) error {
-	_, err := run("save", path)
 	return err
 }
 
@@ -172,15 +177,16 @@ func SaveAs(path string) error {
 		return []ArtLayer{}, err
 	}
 	return out, err
-}
-*/
+}*/
 
 // ApplyDataset fills out a template file with information from a given dataset (csv) file.
 func ApplyDataset(name string) ([]byte, error) {
 	return DoJs("applyDataset.jsx", name)
 }
 
-// JSLayer retrurns javascript code to get the layer with a given path.
+// JSLayer "compiles" Javascript code to get an ArtLayer with the given path.
+// The output always ends with a semicolon, so if you want to access a specific
+// property of the layer, you'll have to trim the output before concatenating
 func JSLayer(path string) string {
 	path = strings.TrimLeft(path, "/")
 	pth := strings.Split(path, "/")

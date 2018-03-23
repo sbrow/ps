@@ -180,7 +180,7 @@ func (d *Document) Dump() {
 	f.Write(byt)
 }
 
-// ArtLayer represents an Art Layer in a photoshop document.
+// ArtLayer reflects certain values from an Art Layer in a Photoshop document.
 type ArtLayer struct {
 	name string // The layer's name.
 	// TextItem  string
@@ -192,6 +192,14 @@ type ArtLayer struct {
 	*Stroke           // The layer's stroke.
 }
 
+// Bounds returns the furthest corners of the ArtLayer.
+func (a *ArtLayer) Bounds() [2][2]int {
+	return a.bounds
+}
+
+// ArtLayerJSON is a bridge between the ArtLayer struct and
+// the encoding/json package, allowing ArtLayer's unexported fields
+// to ber written to and read from by the json package.
 type ArtLayerJSON struct {
 	Name      string
 	Bounds    [2][2]int
@@ -201,6 +209,8 @@ type ArtLayerJSON struct {
 	StrokeAmt float32
 }
 
+// MarshalJSON fufills the json.Marshaler interface, allowing the ArtLayer to be
+// saved to disk in JSON format.
 func (a *ArtLayer) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&ArtLayerJSON{
 		Name:      a.name,
@@ -230,10 +240,6 @@ func (a *ArtLayer) Name() string {
 	return a.name
 }
 
-func (a *ArtLayer) Bounds() [2][2]int {
-	return a.bounds
-}
-
 // X1 returns the layer's leftmost x value.
 func (a *ArtLayer) X1() int {
 	return a.bounds[0][0]
@@ -244,7 +250,7 @@ func (a *ArtLayer) X2() int {
 	return a.bounds[1][0]
 }
 
-// Y1 returns the layer's topmost Y value.
+// Y1 returns the layer's topmost y value.
 func (a *ArtLayer) Y1() int {
 	return a.bounds[0][1]
 }
@@ -369,22 +375,29 @@ func (a *ArtLayer) Visible() bool {
 }
 
 // SetPos snaps the given layer boundry to the given point.
-// Valid options for bound are: TL, TR, BL, BR
-// TODO: Improve
+// Valid options for bound are: "TL", "TR", "BL", "BR"
+//
+// TODO: Test TR and BR
 func (a *ArtLayer) SetPos(x, y int, bound string) {
-	if x == 0 && y == 0 {
+	if !a.visible || (x == 0 && y == 0) {
 		return
 	}
-	if !a.visible {
-		return
-	}
-
 	var lyrX, lyrY int
-	lyrX = a.X1()
-	if bound != "TL" {
+	switch bound[:1] {
+	case "B":
 		lyrY = a.Y2()
-	} else { // "BL"
+	case "T":
+		fallthrough
+	default:
 		lyrY = a.Y1()
+	}
+	switch bound[1:] {
+	case "R":
+		lyrX = a.X2()
+	case "L":
+		fallthrough
+	default:
+		lyrX = a.X1()
 	}
 	byt, err := DoJs("moveLayer.jsx", JSLayer(a.Path()), fmt.Sprint(x-lyrX), fmt.Sprint(y-lyrY))
 	var bounds [2][2]int
