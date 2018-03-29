@@ -137,6 +137,7 @@ func TestMove(t *testing.T) {
 }
 
 func TestActiveDocument(t *testing.T) {
+	Mode = Safe
 	if testing.Short() {
 		t.Skip("Skipping \"TestDocument\"")
 	}
@@ -167,6 +168,7 @@ func TestActiveDocument(t *testing.T) {
 	}
 	s := Stroke{Size: 4, Color: &RGB{0, 0, 0}}
 	lyr.SetStroke(s, &RGB{128, 128, 128})
+	d.Dump()
 }
 
 func TestColor(t *testing.T) {

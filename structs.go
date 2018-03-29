@@ -12,21 +12,6 @@ import (
 	"strings"
 )
 
-type ModeEnum int
-
-// Mode determines how aggressively ps will attempt to sync with Photoshop.
-var Mode ModeEnum
-
-// Normal Mode Always checks to see if layers are updated
-// before returning them.
-const Normal ModeEnum = 0
-
-// Safe Mode Always loads the document from scratch. (Slow)
-const Safe ModeEnum = 1
-
-// Fast mode never checks layers before returning.
-const Fast ModeEnum = 2
-
 // Group represents a Document or LayerSet.
 type Group interface {
 	Name() string
@@ -182,8 +167,8 @@ func (d *Document) Dump() {
 
 // ArtLayer reflects certain values from an Art Layer in a Photoshop document.
 type ArtLayer struct {
-	name string // The layer's name.
-	// TextItem  string
+	name    string    // The layer's name.
+	Text    *string   // The contents of a text layer.
 	bounds  [2][2]int // The layers' corners.
 	parent  Group     // The LayerSet/Document this layer is in.
 	visible bool      // Whether or not the layer is visible.
@@ -207,11 +192,13 @@ type ArtLayerJSON struct {
 	Color     [3]int
 	Stroke    [3]int
 	StrokeAmt float32
+	Text      *string
 }
 
-// MarshalJSON fufills the json.Marshaler interface, allowing the ArtLayer to be
+// MarshalJSON fulfills the json.Marshaler interface, allowing the ArtLayer to be
 // saved to disk in JSON format.
 func (a *ArtLayer) MarshalJSON() ([]byte, error) {
+	// txt := strings.Replace(*a.Text, "\r", "\\r", -1)
 	return json.Marshal(&ArtLayerJSON{
 		Name:      a.name,
 		Bounds:    a.bounds,
@@ -219,6 +206,7 @@ func (a *ArtLayer) MarshalJSON() ([]byte, error) {
 		Color:     a.Color.RGB(),
 		Stroke:    a.Stroke.RGB(),
 		StrokeAmt: a.Stroke.Size,
+		Text:      a.Text,
 	})
 }
 
@@ -232,6 +220,10 @@ func (a *ArtLayer) UnmarshalJSON(b []byte) error {
 	a.Color = RGB{tmp.Color[0], tmp.Color[1], tmp.Color[2]}
 	a.Stroke = &Stroke{tmp.StrokeAmt, RGB{tmp.Stroke[0], tmp.Stroke[1], tmp.Stroke[2]}}
 	a.visible = tmp.Visible
+	if tmp.Text != nil {
+		// s := strings.Replace(*tmp.Text, "\\r", "\r", -1)
+		a.Text = tmp.Text
+	}
 	a.current = false
 	return nil
 }
@@ -264,7 +256,7 @@ func (a *ArtLayer) SetParent(c Group) {
 	a.parent = c
 }
 
-// SetActive makes this layer active in photoshop.
+// SetActive makes this layer active in Photoshop.
 // Layers need to be active to perform certain operations
 func (a *ArtLayer) SetActive() ([]byte, error) {
 	js := fmt.Sprintf("app.activeDocument.activeLayer=%s", JSLayer(a.Path()))
@@ -473,10 +465,14 @@ func (l *LayerSet) ArtLayer(name string) *ArtLayer {
 				}
 				var lyr2 *ArtLayer
 				err = json.Unmarshal(byt, &lyr2)
+				if err != nil {
+					log.Panic(err)
+				}
 				lyr.name = lyr2.name
 				lyr.bounds = lyr2.bounds
 				lyr.visible = lyr2.visible
 				lyr.current = true
+				lyr.Text = lyr2.Text
 			}
 			return lyr
 		}
@@ -519,6 +515,10 @@ func NewLayerSet(path string, g Group) (*LayerSet, error) {
 	byt, err := DoJs("getLayerSet.jsx", JSLayer(path))
 	var out *LayerSet
 	err = json.Unmarshal(byt, &out)
+	if err != nil {
+		log.Println(string(byt))
+		log.Panic(err)
+	}
 	if flag.Lookup("test.v") != nil {
 		// log.Println(path)
 		// log.Println(out)

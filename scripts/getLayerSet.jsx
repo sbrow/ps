@@ -7,7 +7,12 @@ for (var i = 0; i < set.artLayers.length; i++) {
 	var lyr = set.artLayers[i];
 	stdout.write(('{"Name":"' + lyr.name + '", "Bounds": [[' + lyr.bounds[0] + ',' +
 		lyr.bounds[1] + '],[' + lyr.bounds[2] + ',' + 
-	    lyr.bounds[3] + ']], "Visible": ' + lyr.visible + '}').replace(/ px/g, ""));
+	    lyr.bounds[3] + ']], "Visible": ' + lyr.visible + ',"Text":').replace(/ px/g, ""));
+	if (lyr.kind == LayerKind.TEXT)
+		stdout.write('"'+lyr.textItem.contents.replace(/\r/g, "\\r")+'"');
+	else
+		stdout.write("null");
+	stdout.write("}")
 	if (i != set.artLayers.length - 1)
 		stdout.writeln(",");
 }

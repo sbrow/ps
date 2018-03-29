@@ -10,10 +10,15 @@ function layers(lyrs) {
 		var lyr = lyrs[i];
 		stdout.write(('{"Name":"' + lyr.name + '", "Bounds": [[' + lyr.bounds[0] + ',' +
 	                     lyr.bounds[1] + '],[' + lyr.bounds[2] + ',' + 
-	                     lyr.bounds[3] + ']], "Visible": ' + lyr.visible + '}').replace(/ px/g, ""));
-		if (i+1 != lyrs.length)
-			stdout.write(',');
-		stdout.writeln();
+	                     lyr.bounds[3] + ']], "Visible": ' + lyr.visible+',"Text":').replace(/ px/g, ""));
+	if (lyr.kind == LayerKind.TEXT)
+		stdout.write('"'+lyr.textItem.contents+'"');
+	else
+		stdout.write("null");
+	stdout.write("}")
+	if (i+1 != lyrs.length)
+		stdout.write(',');
+	stdout.writeln();
 	}
 }
 layers(doc.artLayers)

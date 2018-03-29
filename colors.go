@@ -4,11 +4,6 @@ import (
 	"encoding/hex"
 )
 
-var Colors map[string]Color = map[string]Color{
-	"Gray":  &RGB{128, 128, 128},
-	"White": &RGB{255, 255, 255},
-}
-
 // Color is an interface for color objects, allowing colors to be
 // used in various formats.
 //

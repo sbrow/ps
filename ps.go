@@ -23,19 +23,6 @@ var Cmd string
 var Opts string
 var pkgpath string
 
-// PSSaveOptions is an enum for options when closing a document.
-type PSSaveOptions int
-
-func (p *PSSaveOptions) String() string {
-	return fmt.Sprint("", *p)
-}
-
-const (
-	PSSaveChanges         PSSaveOptions = 1
-	PSDoNotSaveChanges    PSSaveOptions = 2
-	PSPromptToSaveChanges PSSaveOptions = 3
-)
-
 func init() {
 	_, file, _, _ := runtime.Caller(0)
 	pkgpath = filepath.Dir(file)
