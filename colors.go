@@ -2,6 +2,7 @@ package ps
 
 import (
 	"encoding/hex"
+	// "fmt"
 )
 
 // Color is an interface for color objects, allowing colors to be
@@ -64,3 +65,7 @@ type Stroke struct {
 	Size float32
 	Color
 }
+
+// func (s *Stroke) String() string {
+// 	return fmt.Sprintf("%vpt %v", s.Size, s.Color.RGB())
+// }

@@ -2,7 +2,6 @@ package ps
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -153,6 +152,7 @@ func ActiveDocument() (*Document, error) {
 }
 
 func (d *Document) Dump() {
+	log.Println("Dumping to disk")
 	f, err := os.Create(d.Filename())
 	if err != nil {
 		log.Fatal(err)
@@ -265,8 +265,11 @@ func (a *ArtLayer) SetActive() ([]byte, error) {
 
 // SetColor creates a color overlay for the layer
 func (a *ArtLayer) SetColor(c Color) {
-	if Mode == 2 && a.Color.RGB() == c.RGB() {
-		return
+	if a.Color.RGB() == c.RGB() {
+		if Mode == 2 || (Mode == 0 && a.current) {
+			log.Println("Skipping color: already set.")
+			return
+		}
 	}
 	if a.Stroke.Size != 0 {
 		a.SetStroke(*a.Stroke, c)
@@ -296,9 +299,10 @@ func (a *ArtLayer) SetColor(c Color) {
 }
 
 func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
-	if Mode == 2 {
-		if stk.Size == a.Stroke.Size && stk.Color.RGB() == a.Color.RGB() {
-			if a.Color.RGB() == fill.RGB() {
+	if stk.Size == a.Stroke.Size && stk.Color.RGB() == a.Stroke.Color.RGB() {
+		if a.Color.RGB() == fill.RGB() {
+			if Mode == 2 || (Mode == 0 && a.current) {
+				log.Println("Skipping stroke: already set.")
 				return
 			}
 		}
@@ -310,6 +314,8 @@ func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
 	if err != nil {
 		log.Panic(err)
 	}
+	log.Printf(" layer %s stroke was %.2fpt %v and color to %v\n", a.name, a.Stroke.Size,
+		a.Stroke.Color.RGB(), a.Color.RGB())
 	a.Stroke = &stk
 	a.Color = fill
 	stkCol := stk.Color.RGB()
@@ -348,12 +354,14 @@ func Layer(path string) (ArtLayer, error) {
 
 // SetVisible makes the layer visible.
 func (a *ArtLayer) SetVisible(b bool) {
-	if a.Visible() == b {
+	if a.visible == b {
 		return
 	}
-	if b {
+	a.visible = b
+	switch b {
+	case true:
 		log.Printf("Showing %s", a.name)
-	} else {
+	case false:
 		log.Printf("Hiding %s", a.name)
 	}
 	js := fmt.Sprintf("%s.visible=%v;",
@@ -392,18 +400,36 @@ func (a *ArtLayer) SetPos(x, y int, bound string) {
 		lyrX = a.X1()
 	}
 	byt, err := DoJs("moveLayer.jsx", JSLayer(a.Path()), fmt.Sprint(x-lyrX), fmt.Sprint(y-lyrY))
-	var bounds [2][2]int
 	if err != nil {
 		panic(err)
 	}
-	json.Unmarshal(byt, bounds)
-	a.bounds = bounds
+	var lyr ArtLayer
+	err = json.Unmarshal(byt, &lyr)
+	if err != nil {
+		log.Panic(err)
+	}
+	a.bounds = lyr.bounds
+}
+
+func (a *ArtLayer) Refresh() {
+	tmp, err := Layer(a.Path())
+	if err != nil {
+		log.Panic(err)
+	}
+	tmp.SetParent(a.Parent())
+	a.name = tmp.name
+	a.bounds = tmp.bounds
+	a.Text = tmp.Text
+	a.parent = tmp.Parent()
+	a.visible = tmp.visible
+	a.current = true
 }
 
 type LayerSet struct {
 	name      string
 	parent    Group
 	current   bool // Whether we've checked this layer since we loaded from disk.
+	visible   bool
 	artLayers []*ArtLayer
 	layerSets []*LayerSet
 }
@@ -445,9 +471,11 @@ func (l *LayerSet) Name() string {
 }
 
 func (l *LayerSet) ArtLayers() []*ArtLayer {
-	for i := 0; i < len(l.artLayers); i++ {
-		if l.artLayers[i] != nil && !l.artLayers[i].current {
-			l.artLayers[i] = l.ArtLayer(l.artLayers[i].name)
+	if Mode != 2 {
+		for _, lyr := range l.artLayers {
+			if !lyr.current {
+				lyr.Refresh()
+			}
 		}
 	}
 	return l.artLayers
@@ -459,20 +487,23 @@ func (l *LayerSet) ArtLayer(name string) *ArtLayer {
 	for _, lyr := range l.artLayers {
 		if lyr.name == name {
 			if Mode == 0 && !lyr.current {
-				byt, err := DoJs("getLayer.jsx", JSLayer(lyr.Path()))
-				if err != nil {
-					log.Panic(err)
-				}
-				var lyr2 *ArtLayer
-				err = json.Unmarshal(byt, &lyr2)
-				if err != nil {
-					log.Panic(err)
-				}
-				lyr.name = lyr2.name
-				lyr.bounds = lyr2.bounds
-				lyr.visible = lyr2.visible
-				lyr.current = true
-				lyr.Text = lyr2.Text
+				lyr.Refresh()
+				/*
+					byt, err := DoJs("getLayer.jsx", JSLayer(lyr.Path()))
+					if err != nil {
+						log.Panic(err)
+					}
+					var lyr2 *ArtLayer
+					err = json.Unmarshal(byt, &lyr2)
+					if err != nil {
+						log.Panic(err)
+					}
+					lyr.name = lyr2.name
+					lyr.bounds = lyr2.bounds
+					lyr.visible = lyr2.visible
+					lyr.current = true
+					lyr.Text = lyr2.Text
+				*/
 			}
 			return lyr
 		}
@@ -519,10 +550,6 @@ func NewLayerSet(path string, g Group) (*LayerSet, error) {
 		log.Println(string(byt))
 		log.Panic(err)
 	}
-	if flag.Lookup("test.v") != nil {
-		// log.Println(path)
-		// log.Println(out)
-	}
 	out.SetParent(g)
 	log.Printf("Loading ActiveDocument/%s\n", out.Path())
 	if err != nil {
@@ -544,6 +571,30 @@ func NewLayerSet(path string, g Group) (*LayerSet, error) {
 
 // SetVisible makes the LayerSet visible.
 func (l *LayerSet) SetVisible(b bool) {
+	if l.visible == b {
+		return
+	}
+	l.visible = b
 	js := fmt.Sprintf("%s%v", JSLayer(strings.TrimRight(l.Path(), ";")), b)
 	DoJs("compilejs.jsx", js)
+}
+
+func (l *LayerSet) Refresh() {
+	var tmp *LayerSet
+	byt, err := DoJs("getLayerSet.jsx", JSLayer(l.Path()))
+	err = json.Unmarshal(byt, &tmp)
+	if err != nil {
+		log.Println(string(byt))
+		log.Panic(err)
+	}
+	tmp.SetParent(l.Parent())
+	for _, lyr := range l.artLayers {
+		lyr.Refresh()
+	}
+	for _, set := range l.layerSets {
+		set.Refresh()
+	}
+	l.name = tmp.name
+	l.visible = tmp.visible
+	l.current = true
 }

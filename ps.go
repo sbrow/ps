@@ -154,19 +154,11 @@ func DoAction(set, name string) error {
 	return err
 }
 
-// Layers returns an array of ArtLayers from the active document
-// based on the given path string.
-/*func Layers(path string) ([]ArtLayer, error) {
-	byt, err := DoJs("getLayers.jsx", JSLayer(path))
-	var out []ArtLayer
-	err = json.Unmarshal(byt, &out)
-	if err != nil {
-		return []ArtLayer{}, err
-	}
-	return out, err
-}*/
-
-// ApplyDataset fills out a template file with information from a given dataset (csv) file.
+// ApplyDataset fills out a template file with information
+// from a given dataset (csv) file. It is important to note that running this
+// function will change data in the Photoshop document, but will not update
+// data in the Go Document struct (if any); you will have to implement syncing
+// them yourself.
 func ApplyDataset(name string) ([]byte, error) {
 	return DoJs("applyDataset.jsx", name)
 }

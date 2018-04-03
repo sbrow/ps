@@ -19,7 +19,7 @@ for (var i = 0; i < set.artLayers.length; i++) {
 stdout.write('], "LayerSets": [')
 for (var i = 0; i < set.layerSets.length; i++) {
 	var s = set.layerSets[i];
-	stdout.write('{"Name": "'+ s.name +'"}');
+	stdout.write('{"Name": "'+ s.name +'", "Visible": '+s.visible+'}');
 	if (i < set.layerSets.length - 1)
 		stdout.writeln(",");
 }
