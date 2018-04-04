@@ -73,10 +73,10 @@ func SaveAs(path string) error {
 func DoJs(path string, args ...string) (out []byte, err error) {
 	// Temp file for js to output to.
 	outpath := filepath.Join(os.Getenv("TEMP"), "js_out.txt")
+	defer os.Remove(outpath)
 	if !strings.HasSuffix(path, ".jsx") {
 		path += ".jsx"
 	}
-	defer os.Remove(outpath)
 
 	args = append([]string{outpath}, args...)
 
@@ -87,14 +87,12 @@ func DoJs(path string, args ...string) (out []byte, err error) {
 
 	args = append([]string{path}, args...)
 	cmd, err := run("dojs", args...)
-	if err != nil {
-		return []byte{}, err
+	if err == nil {
+		file, err := ioutil.ReadFile(outpath)
+		if err == nil {
+			cmd = append(cmd, file...)
+		}
 	}
-	file, err := ioutil.ReadFile(outpath)
-	if err != nil {
-		return cmd, err
-	}
-	cmd = append(cmd, file...)
 	return cmd, err
 }
 
@@ -138,11 +136,7 @@ func run(name string, args ...string) ([]byte, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &errs
 	err := cmd.Run()
-	if err != nil {
-		return out.Bytes(), err
-		// return append(out.Bytes(), errs.Bytes()...), err
-	}
-	if len(errs.Bytes()) != 0 {
+	if err != nil || len(errs.Bytes()) != 0 {
 		return out.Bytes(), errors.New(string(errs.Bytes()))
 	}
 	return out.Bytes(), nil

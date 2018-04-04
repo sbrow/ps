@@ -6,5 +6,8 @@ if wScript.Arguments.Count = 0 then
 else
 	path = wScript.Arguments(0)
 	args = wScript.Arguments(1)
-	appRef.DoJavaScriptFile path, Split(args, ",")
+	error = appRef.DoJavaScriptFile(path, Split(args, ","))
+	if Not error = "true" Then
+		Err.raise 1, "dojs.vbs", error
+	end if
 end if

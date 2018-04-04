@@ -1,5 +1,5 @@
 ﻿#include lib.js
-
+app.displayDialogs=DialogModes.NO
 var stdout = newFile(arguments[0]);
 var lyr = eval(arguments[1]);
 stdout.write(('{"Name":"' + lyr.name + '","Bounds":[[' + lyr.bounds[0] + ',' +

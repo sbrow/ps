@@ -411,10 +411,10 @@ func (a *ArtLayer) SetPos(x, y int, bound string) {
 	a.bounds = lyr.bounds
 }
 
-func (a *ArtLayer) Refresh() {
+func (a *ArtLayer) Refresh() error {
 	tmp, err := Layer(a.Path())
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 	tmp.SetParent(a.Parent())
 	a.name = tmp.name
@@ -423,6 +423,7 @@ func (a *ArtLayer) Refresh() {
 	a.parent = tmp.Parent()
 	a.visible = tmp.visible
 	a.current = true
+	return nil
 }
 
 type LayerSet struct {
@@ -487,28 +488,20 @@ func (l *LayerSet) ArtLayer(name string) *ArtLayer {
 	for _, lyr := range l.artLayers {
 		if lyr.name == name {
 			if Mode == 0 && !lyr.current {
-				lyr.Refresh()
-				/*
-					byt, err := DoJs("getLayer.jsx", JSLayer(lyr.Path()))
-					if err != nil {
-						log.Panic(err)
-					}
-					var lyr2 *ArtLayer
-					err = json.Unmarshal(byt, &lyr2)
-					if err != nil {
-						log.Panic(err)
-					}
-					lyr.name = lyr2.name
-					lyr.bounds = lyr2.bounds
-					lyr.visible = lyr2.visible
-					lyr.current = true
-					lyr.Text = lyr2.Text
-				*/
+				err := lyr.Refresh()
+				if err != nil {
+					l.Refresh()
+				}
 			}
 			return lyr
 		}
 	}
-	return nil
+	l.Refresh()
+	for _, lyr := range l.artLayers {
+		fmt.Println(lyr)
+	}
+	lyr := l.ArtLayer(name)
+	return lyr
 }
 
 func (l *LayerSet) LayerSets() []*LayerSet {
@@ -589,7 +582,11 @@ func (l *LayerSet) Refresh() {
 	}
 	tmp.SetParent(l.Parent())
 	for _, lyr := range l.artLayers {
-		lyr.Refresh()
+		err := lyr.Refresh()
+		if err != nil {
+			l.artLayers = tmp.artLayers
+			break
+		}
 	}
 	for _, set := range l.layerSets {
 		set.Refresh()
