@@ -5,6 +5,7 @@ import (
 )
 
 var Colors map[string]Color = map[string]Color{
+	"Black": &RGB{0, 0, 0},
 	"Gray":  &RGB{128, 128, 128},
 	"White": &RGB{255, 255, 255},
 }

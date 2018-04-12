@@ -1,7 +1,9 @@
+// TODO: Count skipped steps.
 package ps
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -267,7 +269,7 @@ func (a *ArtLayer) SetActive() ([]byte, error) {
 func (a *ArtLayer) SetColor(c Color) {
 	if a.Color.RGB() == c.RGB() {
 		if Mode == 2 || (Mode == 0 && a.current) {
-			log.Println("Skipping color: already set.")
+			// log.Println("Skipping color: already set.")
 			return
 		}
 	}
@@ -299,10 +301,15 @@ func (a *ArtLayer) SetColor(c Color) {
 }
 
 func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
+	if stk.Size == 0 {
+		a.Stroke = &stk
+		a.SetColor(fill)
+		return
+	}
 	if stk.Size == a.Stroke.Size && stk.Color.RGB() == a.Stroke.Color.RGB() {
 		if a.Color.RGB() == fill.RGB() {
 			if Mode == 2 || (Mode == 0 && a.current) {
-				log.Println("Skipping stroke: already set.")
+				// log.Println("Skipping stroke: already set.")
 				return
 			}
 		}
@@ -314,8 +321,6 @@ func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
 	if err != nil {
 		log.Panic(err)
 	}
-	log.Printf(" layer %s stroke was %.2fpt %v and color to %v\n", a.name, a.Stroke.Size,
-		a.Stroke.Color.RGB(), a.Color.RGB())
 	a.Stroke = &stk
 	a.Color = fill
 	stkCol := stk.Color.RGB()
@@ -338,6 +343,17 @@ func (a *ArtLayer) Parent() Group {
 
 func (a *ArtLayer) Path() string {
 	return fmt.Sprintf("%s%s", a.parent.Path(), a.name)
+}
+
+func (a *ArtLayer) Format(start, end int, font, style string) {
+	if !a.Visible() {
+		return
+	}
+	_, err := DoJs("fmtText.jsx", fmt.Sprint(start), fmt.Sprint(end),
+		font, style)
+	if err != nil {
+		log.Panic(err)
+	}
 }
 
 // Layer returns an ArtLayer from the active document given a specified
@@ -484,6 +500,7 @@ func (l *LayerSet) ArtLayers() []*ArtLayer {
 
 // ArtLayer returns the first top level ArtLayer matching
 // the given name.
+// TODO: Does funky things when passed invalid layername.
 func (l *LayerSet) ArtLayer(name string) *ArtLayer {
 	for _, lyr := range l.artLayers {
 		if lyr.name == name {
@@ -491,16 +508,24 @@ func (l *LayerSet) ArtLayer(name string) *ArtLayer {
 				err := lyr.Refresh()
 				if err != nil {
 					l.Refresh()
+					err := lyr.Refresh()
+					if err != nil {
+						log.Panic(err)
+					}
 				}
 			}
 			return lyr
 		}
 	}
-	l.Refresh()
-	for _, lyr := range l.artLayers {
-		fmt.Println(lyr)
-	}
+	// l.Refresh()
+	// for _, lyr := range l.artLayers {
+	// fmt.Println(lyr)
+	// }
 	lyr := l.ArtLayer(name)
+	fmt.Println(lyr)
+	if lyr == nil {
+		log.Panic(errors.New("Layer not found!"))
+	}
 	return lyr
 }
 
@@ -577,7 +602,7 @@ func (l *LayerSet) Refresh() {
 	byt, err := DoJs("getLayerSet.jsx", JSLayer(l.Path()))
 	err = json.Unmarshal(byt, &tmp)
 	if err != nil {
-		log.Println(string(byt))
+		log.Println("Error in LayerSet.Refresh()", string(byt))
 		log.Panic(err)
 	}
 	tmp.SetParent(l.Parent())
