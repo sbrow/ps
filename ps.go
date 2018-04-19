@@ -73,7 +73,7 @@ func SaveAs(path string) error {
 func DoJs(path string, args ...string) (out []byte, err error) {
 	// Temp file for js to output to.
 	outpath := filepath.Join(os.Getenv("TEMP"), "js_out.txt")
-	defer os.Remove(outpath)
+	// defer os.Remove(outpath)
 	if !strings.HasSuffix(path, ".jsx") {
 		path += ".jsx"
 	}
@@ -160,11 +160,15 @@ func ApplyDataset(name string) ([]byte, error) {
 // JSLayer "compiles" Javascript code to get an ArtLayer with the given path.
 // The output always ends with a semicolon, so if you want to access a specific
 // property of the layer, you'll have to trim the output before concatenating
-func JSLayer(path string) string {
+func JSLayer(path string, art ...bool) string {
 	path = strings.TrimLeft(path, "/")
 	pth := strings.Split(path, "/")
 	js := "app.activeDocument"
 	last := len(pth) - 1
+	if len(art) > 0 {
+		pth = pth[:len(pth)-1]
+		last--
+	}
 	if last > 0 {
 		for i := 0; i < last; i++ {
 			js += fmt.Sprintf(".layerSets.getByName('%s')", pth[i])

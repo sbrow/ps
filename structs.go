@@ -168,6 +168,7 @@ func (d *Document) Dump() {
 }
 
 // ArtLayer reflects certain values from an Art Layer in a Photoshop document.
+// TODO: Make TextLayer a subclass of ArtLayer
 type ArtLayer struct {
 	name    string    // The layer's name.
 	Text    *string   // The contents of a text layer.
@@ -195,6 +196,16 @@ type ArtLayerJSON struct {
 	Stroke    [3]int
 	StrokeAmt float32
 	Text      *string
+}
+
+func (a *ArtLayer) SetText(txt string) {
+	lyr := strings.TrimRight(JSLayer(a.Path()), ";")
+	js := fmt.Sprintf("%s.textItem.contents='%s';", lyr, txt)
+	_, err := DoJs("compilejs.jsx", js)
+	if err != nil {
+		a.Text = &txt
+	}
+	a.Refresh()
 }
 
 // MarshalJSON fulfills the json.Marshaler interface, allowing the ArtLayer to be
@@ -444,6 +455,7 @@ func (a *ArtLayer) Refresh() error {
 
 type LayerSet struct {
 	name      string
+	bounds    [2][2]int
 	parent    Group
 	current   bool // Whether we've checked this layer since we loaded from disk.
 	visible   bool
@@ -453,6 +465,7 @@ type LayerSet struct {
 
 type LayerSetJSON struct {
 	Name      string
+	Bounds    [2][2]int
 	ArtLayers []*ArtLayer
 	LayerSets []*LayerSet
 }
@@ -460,6 +473,7 @@ type LayerSetJSON struct {
 func (l *LayerSet) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&LayerSetJSON{
 		Name:      l.name,
+		Bounds:    l.bounds,
 		ArtLayers: l.artLayers,
 		LayerSets: l.layerSets,
 	})
@@ -471,6 +485,7 @@ func (l *LayerSet) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	l.name = tmp.Name
+	l.bounds = tmp.Bounds
 	l.artLayers = tmp.ArtLayers
 	for _, lyr := range l.artLayers {
 		lyr.SetParent(l)
@@ -544,6 +559,11 @@ func (l *LayerSet) LayerSet(name string) *LayerSet {
 	return nil
 }
 
+// Bounds returns the furthest corners of the LayerSet.
+func (l *LayerSet) Bounds() [2][2]int {
+	return l.bounds
+}
+
 func (l *LayerSet) SetParent(c Group) {
 	l.parent = c
 }
@@ -562,9 +582,13 @@ func (l *LayerSet) Path() string {
 func NewLayerSet(path string, g Group) (*LayerSet, error) {
 	path = strings.Replace(path, "//", "/", -1)
 	byt, err := DoJs("getLayerSet.jsx", JSLayer(path))
+	if err != nil {
+		log.Panic(err)
+	}
 	var out *LayerSet
 	err = json.Unmarshal(byt, &out)
 	if err != nil {
+		log.Println(JSLayer(path))
 		log.Println(string(byt))
 		log.Panic(err)
 	}
@@ -597,12 +621,53 @@ func (l *LayerSet) SetVisible(b bool) {
 	DoJs("compilejs.jsx", js)
 }
 
+// SetPos snaps the given layerset boundry to the given point.
+// Valid options for bound are: "TL", "TR", "BL", "BR"
+//
+// TODO: Test TR and BR
+func (l *LayerSet) SetPos(x, y int, bound string) {
+	// if !l.visible || (x == 0 && y == 0) {
+	// return
+	// }
+	var lyrX, lyrY int
+	switch bound[:1] {
+	case "B":
+		lyrY = l.bounds[1][1]
+	case "T":
+		fallthrough
+	default:
+		lyrY = l.bounds[0][1]
+	}
+	switch bound[1:] {
+	case "R":
+		lyrX = l.bounds[1][0]
+	case "L":
+		fallthrough
+	default:
+		lyrX = l.bounds[0][0]
+	}
+	fmt.Println(JSLayer(l.Path()), fmt.Sprint(x-lyrX), fmt.Sprint(y-lyrY))
+	byt, err := DoJs("moveLayer.jsx", JSLayer(l.Path()), fmt.Sprint(x-lyrX),
+		fmt.Sprint(y-lyrY), JSLayer(l.Path(), true))
+	if err != nil {
+		fmt.Println("byte:", string(byt))
+		panic(err)
+	}
+	var lyr LayerSet
+	err = json.Unmarshal(byt, &lyr)
+	if err != nil {
+		fmt.Println("byte:", string(byt))
+		log.Panic(err)
+	}
+	l.bounds = lyr.bounds
+}
+
 func (l *LayerSet) Refresh() {
 	var tmp *LayerSet
-	byt, err := DoJs("getLayerSet.jsx", JSLayer(l.Path()))
+	byt, err := DoJs("getLayerSet.jsx", JSLayer(l.Path()), JSLayer(l.Path(), true))
 	err = json.Unmarshal(byt, &tmp)
 	if err != nil {
-		log.Println("Error in LayerSet.Refresh()", string(byt))
+		log.Println("Error in LayerSet.Refresh() \"", string(byt), "\"", "for", l.Path())
 		log.Panic(err)
 	}
 	tmp.SetParent(l.Parent())
@@ -617,6 +682,7 @@ func (l *LayerSet) Refresh() {
 		set.Refresh()
 	}
 	l.name = tmp.name
+	l.bounds = tmp.bounds
 	l.visible = tmp.visible
 	l.current = true
 }

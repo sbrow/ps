@@ -1,12 +1,20 @@
 ﻿// Opens and returns a file, overwriting new data.
 function newFile(path) {
 	var f = File(path)
-	if(f.exists)
-	    f.remove()
 	f.encoding = "UTF8"
-	f.open("e", "TEXT", "????")
+	f.open("w")
 	return f
 }
+
+File.prototype.flush = function() {
+    this.close()
+    this.open("a")
+};
+function flush(file) {
+    file.close()
+    file.open("a")
+}
+
 
 // Prints an error message.
 function err(e) {
@@ -17,6 +25,14 @@ function bounds(lyr) {
     return ('"Bounds": [[' + lyr.bounds[0] + ',' +
     lyr.bounds[1] + '],[' + lyr.bounds[2] + ',' + 
     lyr.bounds[3] + ']]').replace(/ px/g, "");
+}
+
+function Undo() {
+    var desc = new ActionDescriptor();
+    var ref = new ActionReference();
+    ref.putEnumerated( charIDToTypeID( "HstS" ), charIDToTypeID( "Ordn" ), charIDToTypeID( "Prvs" ));
+    desc.putReference(charIDToTypeID( "null" ), ref);
+    executeAction( charIDToTypeID( "slct" ), desc, DialogModes.NO );
 }
 
 /**
