@@ -91,6 +91,9 @@ func (d *Document) LayerSets() []*LayerSet {
 func (d *Document) LayerSet(name string) *LayerSet {
 	for _, set := range d.layerSets {
 		if set.name == name {
+			if Mode != Fast && !set.current {
+				set.Refresh()
+			}
 			return set
 		}
 	}
@@ -124,8 +127,8 @@ func ActiveDocument() (*Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	d.name = string(byt)
-	if Mode != 1 {
+	d.name = strings.TrimRight(string(byt), "\r\n")
+	if Mode != Safe {
 		byt, err = ioutil.ReadFile(d.Filename())
 		if err == nil {
 			log.Println("Previous version found, loading")
@@ -137,7 +140,15 @@ func ActiveDocument() (*Document, error) {
 	}
 	log.Println("Loading manually (This could take awhile)")
 	byt, err = DoJs("getActiveDoc.jsx")
+	if err != nil {
+		log.Panic(err)
+	}
 	err = json.Unmarshal(byt, &d)
+	if err != nil {
+		d.Dump()
+		fmt.Println(string(byt))
+		log.Panic(err)
+	}
 	for _, lyr := range d.artLayers {
 		lyr.SetParent(d)
 	}
@@ -317,6 +328,9 @@ func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
 		a.SetColor(fill)
 		return
 	}
+	if fill == nil {
+		fill = a.Color
+	}
 	if stk.Size == a.Stroke.Size && stk.Color.RGB() == a.Stroke.Color.RGB() {
 		if a.Color.RGB() == fill.RGB() {
 			if Mode == 2 || (Mode == 0 && a.current) {
@@ -466,6 +480,7 @@ type LayerSet struct {
 type LayerSetJSON struct {
 	Name      string
 	Bounds    [2][2]int
+	Visible   bool
 	ArtLayers []*ArtLayer
 	LayerSets []*LayerSet
 }
@@ -474,6 +489,7 @@ func (l *LayerSet) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&LayerSetJSON{
 		Name:      l.name,
 		Bounds:    l.bounds,
+		Visible:   l.visible,
 		ArtLayers: l.artLayers,
 		LayerSets: l.layerSets,
 	})
@@ -486,6 +502,7 @@ func (l *LayerSet) UnmarshalJSON(b []byte) error {
 	}
 	l.name = tmp.Name
 	l.bounds = tmp.Bounds
+	l.visible = tmp.Visible
 	l.artLayers = tmp.ArtLayers
 	for _, lyr := range l.artLayers {
 		lyr.SetParent(l)
@@ -608,7 +625,12 @@ func NewLayerSet(path string, g Group) (*LayerSet, error) {
 		out.layerSets[i] = s
 		s.SetParent(out)
 	}
+	out.current = true
 	return out, err
+}
+
+func (l *LayerSet) Visible() bool {
+	return l.visible
 }
 
 // SetVisible makes the LayerSet visible.
@@ -616,19 +638,31 @@ func (l *LayerSet) SetVisible(b bool) {
 	if l.visible == b {
 		return
 	}
-	l.visible = b
-	js := fmt.Sprintf("%s%v", JSLayer(strings.TrimRight(l.Path(), ";")), b)
+	js := fmt.Sprintf("%s.visible=%v;", strings.TrimRight(
+		JSLayer(l.Path()), ";"), b)
 	DoJs("compilejs.jsx", js)
+	l.visible = b
 }
 
 // SetPos snaps the given layerset boundry to the given point.
 // Valid options for bound are: "TL", "TR", "BL", "BR"
-//
-// TODO: Test TR and BR
 func (l *LayerSet) SetPos(x, y int, bound string) {
-	// if !l.visible || (x == 0 && y == 0) {
-	// return
-	// }
+	if !l.visible || (x == 0 && y == 0) {
+		return
+	}
+	byt, err := DoJs("LayerSetBounds.jsx", JSLayer(l.Path()),
+		JSLayer(l.Path(), true))
+	if err != nil {
+		log.Println(string(byt))
+		log.Panic(err)
+	}
+	var bnds *[2][2]int
+	err = json.Unmarshal(byt, &bnds)
+	if err != nil {
+		fmt.Println(string(byt))
+		log.Panic(err)
+	}
+	l.bounds = *bnds
 	var lyrX, lyrY int
 	switch bound[:1] {
 	case "B":
@@ -646,8 +680,7 @@ func (l *LayerSet) SetPos(x, y int, bound string) {
 	default:
 		lyrX = l.bounds[0][0]
 	}
-	fmt.Println(JSLayer(l.Path()), fmt.Sprint(x-lyrX), fmt.Sprint(y-lyrY))
-	byt, err := DoJs("moveLayer.jsx", JSLayer(l.Path()), fmt.Sprint(x-lyrX),
+	byt, err = DoJs("moveLayer.jsx", JSLayer(l.Path()), fmt.Sprint(x-lyrX),
 		fmt.Sprint(y-lyrY), JSLayer(l.Path(), true))
 	if err != nil {
 		fmt.Println("byte:", string(byt))

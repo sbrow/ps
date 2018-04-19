@@ -10,7 +10,7 @@ function layers(lyrs) {
 		var lyr = lyrs[i];
 		stdout.write(('{"Name":"' + lyr.name + '", "Bounds": [[' + lyr.bounds[0] + ',' +
 	                     lyr.bounds[1] + '],[' + lyr.bounds[2] + ',' + 
-	                     lyr.bounds[3] + ']], "Visible": ' + lyr.visible+',"Text":').replace(/ px/g, ""));
+	                     lyr.bounds[3] + ']], "Visible": ' + lyr.visible+', "Text":').replace(/ px/g, ""));
 	if (lyr.kind == LayerKind.TEXT)
 		stdout.write('"'+lyr.textItem.contents+'"');
 	else
@@ -29,7 +29,7 @@ function lyrSets(sets, nm) {
 	for (var i = 0; i < sets.length; i++) {
 		var set = sets[i];
 		var name = nm + set.name + "/";
-		stdout.write('{"Name": "' + set.name + '"}');
+		stdout.write('{"Name": "' + set.name + '", "Visible":'+ set.visible +'}');
 		if (i+1 != sets.length)
 			stdout.write(',');
 	}

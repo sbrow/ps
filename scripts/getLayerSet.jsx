@@ -1,7 +1,7 @@
 ﻿#include lib.js
 var stdout = newFile(arguments[0]);
 var set = eval(arguments[1]);
-stdout.writeln('{"Name": "'+set.name+'", "ArtLayers":[');
+stdout.writeln('{"Name": "'+set.name+'", "Visible": '+ set.visible +', "ArtLayers":[');
 stdout.flush();
 for (var i = 0; i < set.artLayers.length; i++) {
 	var lyr = set.artLayers[i];
