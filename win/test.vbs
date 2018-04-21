@@ -1,1 +1,0 @@
-wScript.echo "Testing..."
