@@ -26,7 +26,7 @@ func Compare(a, b Color) Color {
 	return b
 }
 
-// RGB is a color in RGB format. It fulfills the Color interface.
+// RGB is a color in RGB format. It implements the Color interface.
 type RGB struct {
 	Red   int
 	Green int
@@ -43,7 +43,7 @@ func (r RGB) Hex() []uint8 {
 	return make([]uint8, 6)
 }
 
-// Hex is a color in hexadecimal format. It fulfills the Color interface.
+// Hex is a color in hexadecimal format. It implements the Color interface.
 type Hex []uint8
 
 func (h Hex) RGB() [3]int {

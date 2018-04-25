@@ -179,7 +179,8 @@ func (d *Document) Dump() {
 }
 
 // ArtLayer reflects certain values from an Art Layer in a Photoshop document.
-// TODO: Make TextLayer a subclass of ArtLayer
+//
+// TODO: Make TextLayer a subclass of ArtLayer.
 type ArtLayer struct {
 	name    string    // The layer's name.
 	Text    *string   // The contents of a text layer.
@@ -219,7 +220,7 @@ func (a *ArtLayer) SetText(txt string) {
 	a.Refresh()
 }
 
-// MarshalJSON fulfills the json.Marshaler interface, allowing the ArtLayer to be
+// MarshalJSON implements the json.Marshaler interface, allowing the ArtLayer to be
 // saved to disk in JSON format.
 func (a *ArtLayer) MarshalJSON() ([]byte, error) {
 	// txt := strings.Replace(*a.Text, "\r", "\\r", -1)
@@ -370,6 +371,7 @@ func (a *ArtLayer) Path() string {
 	return fmt.Sprintf("%s%s", a.parent.Path(), a.name)
 }
 
+// TODO: Documentation for Format()
 func (a *ArtLayer) Format(start, end int, font, style string) {
 	if !a.Visible() {
 		return
@@ -383,7 +385,7 @@ func (a *ArtLayer) Format(start, end int, font, style string) {
 
 // Layer returns an ArtLayer from the active document given a specified
 // path string.
-func Layer(path string) (ArtLayer, error) {
+func layer(path string) (ArtLayer, error) {
 	byt, err := DoJs("getLayer.jsx", JSLayer(path))
 	var out ArtLayer
 	err = json.Unmarshal(byt, &out)
@@ -453,7 +455,7 @@ func (a *ArtLayer) SetPos(x, y int, bound string) {
 }
 
 func (a *ArtLayer) Refresh() error {
-	tmp, err := Layer(a.Path())
+	tmp, err := layer(a.Path())
 	if err != nil {
 		return err
 	}
