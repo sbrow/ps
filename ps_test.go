@@ -122,14 +122,14 @@ func TestLayerSet(t *testing.T) {
 }
 
 func TestLayer(t *testing.T) {
-	_, err := Layer("Border/Inner Border")
+	_, err := layer("Border/Inner Border")
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestMove(t *testing.T) {
-	lyr, err := Layer("Group 1/Layer 1")
+	lyr, err := layer("Group 1/Layer 1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,14 +182,9 @@ func TestColor(t *testing.T) {
 }
 
 func TestApplyDataset(t *testing.T) {
-	out := []byte("done!\r\n")
-	ret, err := ApplyDataset("	Anger")
+	err := ApplyDataset("Anger")
 	if err != nil {
 		t.Fatal(err)
-	}
-	if string(ret) != string(out) {
-		fail := fmt.Sprintf("TestJS failed.\ngot:\t\"%s\"\nwant:\t\"%s\"", ret, out)
-		t.Fatal(fail)
 	}
 }
 
@@ -246,6 +241,37 @@ func TestDoJs_HideLayer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestTextItem(t *testing.T) {
+	// err := Open("F:\\GitLab\\dreamkeepers-psd\\Template009.1.psd")
+	// if err != nil {
+	// t.Fatal(err)
+	// }
+
+	d, err := ActiveDocument()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lyr := range d.ArtLayers() {
+		if lyr.Name() == "Text" {
+			lyr.SetText("Butts")
+			lyr.FmtText(0, 5, "Arial", "Regular")
+			lyr.FmtText(0, 3, "Arial", "Bold")
+		}
+	}
+
+	/*	byt := []byte(`{"Name": "lyr", "TextItem": {"Contents": "lyr", "Size": 12.000, "Font": "ArialItalic"}}`)
+		lyr := &ArtLayer{}
+		// byt := []byte(`{"Name": "lyr"}`)
+		// lyr := &TextItem{}
+		err := lyr.UnmarshalJSON(byt)
+		fmt.Printf("%+v\n", lyr)
+		fmt.Println(lyr.TextItem)
+		if err != nil {
+			t.Fatal(err)
+		}
+	*/
 }
 
 func BenchmarkDoc_Go(b *testing.B) {

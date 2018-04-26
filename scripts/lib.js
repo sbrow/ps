@@ -98,3 +98,25 @@ function setFormatting(start, end, fontName, fontStyle, fontSize, colorArray) {
         }
     }
 }
+
+function layers(lyrs) {
+    if (typeof lyrs === 'undefined')
+        return;
+    var str = ""; 
+    for (var i = 0; i < lyrs.length; i++) {
+        var lyr = lyrs[i];
+        str += ('{"Name":"' + lyr.name + '", "Bounds": [[' + lyr.bounds[0] + ',' +
+                         lyr.bounds[1] + '],[' + lyr.bounds[2] + ',' + 
+                         lyr.bounds[3] + ']], "Visible": ' + lyr.visible+', "TextItem": ').replace(/ px/g, "");
+        if (lyr.kind == LayerKind.TEXT) {
+            str += ('{"Contents": "'+lyr.textItem.contents+'",').replace(/\r/g, '\\r');
+            str += (' "Size": '+lyr.textItem.size+',').replace(/ pt/g, '');
+            str += ' "Font": "'+lyr.textItem.font+'"}\n'
+        } else
+            str += "null";
+    str += "}";
+    if (i+1 != lyrs.length)
+        str += ',';
+    }
+    return str
+}

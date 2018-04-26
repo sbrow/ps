@@ -180,16 +180,16 @@ func (d *Document) Dump() {
 
 // ArtLayer reflects certain values from an Art Layer in a Photoshop document.
 //
-// TODO: Make TextLayer a subclass of ArtLayer.
+// TODO: (2) Make TextLayer a subclass of ArtLayer.
 type ArtLayer struct {
-	name    string    // The layer's name.
-	Text    *string   // The contents of a text layer.
-	bounds  [2][2]int // The layers' corners.
-	parent  Group     // The LayerSet/Document this layer is in.
-	visible bool      // Whether or not the layer is visible.
-	current bool      // Whether we've checked this layer since we loaded from disk.
-	Color             // The layer's color overlay.
-	*Stroke           // The layer's stroke.
+	name      string    // The layer's name.
+	bounds    [2][2]int // The layers' corners.
+	parent    Group     // The LayerSet/Document this layer is in.
+	visible   bool      // Whether or not the layer is visible.
+	current   bool      // Whether we've checked this layer since we loaded from disk.
+	Color               // The layer's color overlay.
+	*Stroke             // The layer's stroke.
+	*TextItem           //The layer's text, if it's a text layer.
 }
 
 // Bounds returns the furthest corners of the ArtLayer.
@@ -207,23 +207,12 @@ type ArtLayerJSON struct {
 	Color     [3]int
 	Stroke    [3]int
 	StrokeAmt float32
-	Text      *string
-}
-
-func (a *ArtLayer) SetText(txt string) {
-	lyr := strings.TrimRight(JSLayer(a.Path()), ";")
-	js := fmt.Sprintf("%s.textItem.contents='%s';", lyr, txt)
-	_, err := DoJs("compilejs.jsx", js)
-	if err != nil {
-		a.Text = &txt
-	}
-	a.Refresh()
+	TextItem  *TextItem
 }
 
 // MarshalJSON implements the json.Marshaler interface, allowing the ArtLayer to be
 // saved to disk in JSON format.
 func (a *ArtLayer) MarshalJSON() ([]byte, error) {
-	// txt := strings.Replace(*a.Text, "\r", "\\r", -1)
 	return json.Marshal(&ArtLayerJSON{
 		Name:      a.name,
 		Bounds:    a.bounds,
@@ -231,7 +220,7 @@ func (a *ArtLayer) MarshalJSON() ([]byte, error) {
 		Color:     a.Color.RGB(),
 		Stroke:    a.Stroke.RGB(),
 		StrokeAmt: a.Stroke.Size,
-		Text:      a.Text,
+		TextItem:  a.TextItem,
 	})
 }
 
@@ -245,11 +234,11 @@ func (a *ArtLayer) UnmarshalJSON(b []byte) error {
 	a.Color = RGB{tmp.Color[0], tmp.Color[1], tmp.Color[2]}
 	a.Stroke = &Stroke{tmp.StrokeAmt, RGB{tmp.Stroke[0], tmp.Stroke[1], tmp.Stroke[2]}}
 	a.visible = tmp.Visible
-	if tmp.Text != nil {
-		// s := strings.Replace(*tmp.Text, "\\r", "\r", -1)
-		a.Text = tmp.Text
-	}
 	a.current = false
+	a.TextItem = tmp.TextItem
+	if a.TextItem != nil {
+		a.TextItem.parent = a
+	}
 	return nil
 }
 
@@ -371,18 +360,6 @@ func (a *ArtLayer) Path() string {
 	return fmt.Sprintf("%s%s", a.parent.Path(), a.name)
 }
 
-// TODO: Documentation for Format()
-func (a *ArtLayer) Format(start, end int, font, style string) {
-	if !a.Visible() {
-		return
-	}
-	_, err := DoJs("fmtText.jsx", fmt.Sprint(start), fmt.Sprint(end),
-		font, style)
-	if err != nil {
-		log.Panic(err)
-	}
-}
-
 // Layer returns an ArtLayer from the active document given a specified
 // path string.
 func layer(path string) (ArtLayer, error) {
@@ -419,8 +396,6 @@ func (a *ArtLayer) Visible() bool {
 
 // SetPos snaps the given layer boundry to the given point.
 // Valid options for bound are: "TL", "TR", "BL", "BR"
-//
-// TODO: Test TR and BR
 func (a *ArtLayer) SetPos(x, y int, bound string) {
 	if !a.visible || (x == 0 && y == 0) {
 		return
@@ -462,7 +437,10 @@ func (a *ArtLayer) Refresh() error {
 	tmp.SetParent(a.Parent())
 	a.name = tmp.name
 	a.bounds = tmp.bounds
-	a.Text = tmp.Text
+	a.TextItem = tmp.TextItem
+	if a.TextItem != nil {
+		a.TextItem.parent = a
+	}
 	a.parent = tmp.Parent()
 	a.visible = tmp.visible
 	a.current = true
@@ -720,4 +698,87 @@ func (l *LayerSet) Refresh() {
 	l.bounds = tmp.bounds
 	l.visible = tmp.visible
 	l.current = true
+}
+
+type TextItem struct {
+	contents string
+	size     float64
+	// color    Color
+	font   string
+	parent *ArtLayer
+}
+
+type TextItemJSON struct {
+	Contents string
+	Size     float64
+	// Color    [3]int
+	Font string
+}
+
+func (t *TextItem) Contents() string {
+	return t.contents
+}
+
+func (t *TextItem) Size() float64 {
+	return t.size
+}
+
+// MarshalJSON implements the json.Marshaler interface, allowing the TextItem to be
+// saved to disk in JSON format.
+func (t *TextItem) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&TextItemJSON{
+		Contents: t.contents,
+		Size:     t.size,
+		// Color:    t.color.RGB(),
+		Font: t.font,
+	})
+}
+
+func (t *TextItem) UnmarshalJSON(b []byte) error {
+	tmp := &TextItemJSON{}
+	if err := json.Unmarshal(b, &tmp); err != nil {
+		return err
+	}
+	t.contents = tmp.Contents
+	t.size = tmp.Size
+	// t.color = RGB{tmp.Color[0], tmp.Color[1], tmp.Color[2]}
+	t.font = tmp.Font
+	return nil
+}
+
+func (t *TextItem) SetText(txt string) {
+	if txt == t.contents {
+		return
+	}
+	lyr := strings.TrimRight(JSLayer(t.parent.Path()), ";")
+	js := fmt.Sprintf("%s.textItem.contents='%s';", lyr, txt)
+	_, err := DoJs("compilejs.jsx", js)
+	if err != nil {
+		t.contents = txt
+	}
+}
+
+func (t *TextItem) SetSize(s float64) {
+	if t.size == s {
+		return
+	}
+	lyr := strings.TrimRight(JSLayer(t.parent.Path()), ";")
+	js := fmt.Sprintf("%s.textItem.size=%f;", lyr, s)
+	_, err := DoJs("compilejs.jsx", js)
+	if err != nil {
+		t.size = s
+	}
+}
+
+// TODO: Documentation for Format(), make to textItem
+func (t *TextItem) Fmt(start, end int, font, style string) {
+	var err error
+	if !t.parent.Visible() {
+		return
+	}
+	_, err = DoJs("fmtText.jsx", fmt.Sprint(start), fmt.Sprint(end),
+		font, style)
+	if err != nil {
+		log.Panic(err)
+	}
 }
