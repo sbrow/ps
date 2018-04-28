@@ -72,6 +72,10 @@ func (d *Document) Name() string {
 	return d.name
 }
 
+func (d *Document) Parent() Group {
+	return nil
+}
+
 // The height of the document, in pixels.
 func (d *Document) Height() int {
 	return d.height
@@ -100,9 +104,6 @@ func (d *Document) LayerSet(name string) *LayerSet {
 	return nil
 }
 
-func (d *Document) Parent() Group {
-	return nil
-}
 func (d *Document) SetParent(g Group) {}
 
 func (d *Document) Path() string {
@@ -178,21 +179,21 @@ func (d *Document) Dump() {
 	f.Write(byt)
 }
 
-// ArtLayer reflects certain values from an Art Layer in a Photoshop document.
+// ArtLayer reflects some values from an Art Layer in a Photoshop document.
 //
 // TODO: (2) Make TextLayer a subclass of ArtLayer.
 type ArtLayer struct {
 	name      string    // The layer's name.
-	bounds    [2][2]int // The layers' corners.
+	bounds    [2][2]int // The corners of the layer's bounding box.
 	parent    Group     // The LayerSet/Document this layer is in.
 	visible   bool      // Whether or not the layer is visible.
 	current   bool      // Whether we've checked this layer since we loaded from disk.
-	Color               // The layer's color overlay.
-	*Stroke             // The layer's stroke.
-	*TextItem           //The layer's text, if it's a text layer.
+	Color               // The layer's color overlay effect (if any).
+	*Stroke             // The layer's stroke effect (if any).
+	*TextItem           // The layer's text, if it's a text layer.
 }
 
-// Bounds returns the furthest corners of the ArtLayer.
+// Bounds returns the coordinates of the corners of the ArtLayer's bounding box.
 func (a *ArtLayer) Bounds() [2][2]int {
 	return a.bounds
 }
@@ -244,6 +245,11 @@ func (a *ArtLayer) UnmarshalJSON(b []byte) error {
 
 func (a *ArtLayer) Name() string {
 	return a.name
+}
+
+// Parent returns the Document or LayerSet this layer is contained in.
+func (a *ArtLayer) Parent() Group {
+	return a.parent
 }
 
 // X1 returns the layer's leftmost x value.
@@ -350,10 +356,6 @@ func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
 	if err != nil {
 		log.Panic(err)
 	}
-}
-
-func (a *ArtLayer) Parent() Group {
-	return a.parent
 }
 
 func (a *ArtLayer) Path() string {

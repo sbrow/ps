@@ -1,3 +1,4 @@
+// TODO: Update package tests.
 package ps
 
 import (
@@ -256,8 +257,8 @@ func TestTextItem(t *testing.T) {
 	for _, lyr := range d.ArtLayers() {
 		if lyr.Name() == "Text" {
 			lyr.SetText("Butts")
-			lyr.FmtText(0, 5, "Arial", "Regular")
-			lyr.FmtText(0, 3, "Arial", "Bold")
+			// lyr.FmtText(0, 5, "Arial", "Regular")
+			// lyr.FmtText(0, 3, "Arial", "Bold")
 		}
 	}
 

@@ -2,6 +2,8 @@
 // The interaction between the two is implemented using Javascript/VBScript.
 //
 // Currently only supports Photoshop CS5 Windows x86_64.
+//
+// TODO: Creatue a Photoshop struct to hold program values and functions.
 package ps
 
 import (
@@ -9,12 +11,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	// "log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	// "update"
 )
 
 // The name of the program that runs scripts on this OS.
@@ -34,11 +36,16 @@ func init() {
 	case "darwin":
 		scmd = "osacript"
 	}
+	// update.Update()
 }
 
-// Start opens Photoshop.
-func Start() error {
-	_, err := run("start")
+// ApplyDataset fills out a template file with information
+// from a given dataset (csv) file. It is important to note that running this
+// function will change data in the Photoshop document, but will not update
+// data in the Go Document struct- you will have to implement syncing
+// them yourself.
+func ApplyDataset(name string) error {
+	_, err := DoJs("applyDataset.jsx", name)
 	return err
 }
 
@@ -48,28 +55,14 @@ func Close(save PSSaveOptions) error {
 	return err
 }
 
-// Open opens a Photoshop document with the specified path.
-// If Photoshop is not currently running, it is started before
-// opening the document.
-func Open(path string) error {
-	_, err := run("open", path)
-	return err
-}
-
-// Quit exits Photoshop with the given saving option.
-func Quit(save PSSaveOptions) error {
-	_, err := run("quit", save.String())
-	return err
-}
-
-// SaveAs saves the Photoshop document to the given location.
-func SaveAs(path string) error {
-	_, err := run("save", path)
+// DoAction runs the Photoshop Action "name" from the Action Set "set".
+func DoAction(set, name string) error {
+	_, err := run("action", set, name)
 	return err
 }
 
 // DoJs runs a Photoshop Javascript script file (.jsx) from the specified location.
-// It can't directly return output, so instead the script must write their output to
+// The script can't directly return output, so instead it writes output to
 // a temporary file ($TEMP/js_out.txt), whose contents is then read and returned.
 func DoJs(path string, args ...string) (out []byte, err error) {
 	// Temp file for js to output to.
@@ -97,16 +90,43 @@ func DoJs(path string, args ...string) (out []byte, err error) {
 	return cmd, err
 }
 
-// Wait prints a message to the console and halts operation until the user
-// signals that they are ready (by pushing enter).
+// JSLayer "compiles" Javascript code to get an ArtLayer with the given path.
+// The output always ends with a semicolon, so if you want to access a specific
+// property of the layer, you'll have to trim the output before concatenating.
 //
-// Useful for when you need to do something by hand in the middle of an
-// otherwise automated process. (i.e. loading a dataset).
-func Wait(msg string) {
-	fmt.Print(msg)
-	var input string
-	fmt.Scanln(&input)
-	fmt.Println()
+// TODO: get rid of the semicolon.
+func JSLayer(path string, art ...bool) string {
+	path = strings.TrimLeft(path, "/")
+	pth := strings.Split(path, "/")
+	js := "app.activeDocument"
+	last := len(pth) - 1
+	if len(art) > 0 {
+		pth = pth[:len(pth)-1]
+		last--
+	}
+	if last > 0 {
+		for i := 0; i < last; i++ {
+			js += fmt.Sprintf(".layerSets.getByName('%s')", pth[i])
+		}
+	}
+	if pth[last] != "" {
+		js += fmt.Sprintf(".artLayers.getByName('%s')", pth[last])
+	}
+	return js + ";"
+}
+
+// Open opens a Photoshop document with the specified path.
+// If Photoshop is not currently running, it is started before
+// opening the document.
+func Open(path string) error {
+	_, err := run("open", path)
+	return err
+}
+
+// Quit exits Photoshop using the given save option.
+func Quit(save PSSaveOptions) error {
+	_, err := run("quit", save.String())
+	return err
 }
 
 // run handles running the script files, returning output, and displaying errors.
@@ -143,43 +163,26 @@ func run(name string, args ...string) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-// DoAction runs the Photoshop Action "name" from the Action Set "set".
-func DoAction(set, name string) error {
-	_, err := run("action", set, name)
+// SaveAs saves the Photoshop document to the given location.
+func SaveAs(path string) error {
+	_, err := run("save", path)
 	return err
 }
 
-// ApplyDataset fills out a template file with information
-// from a given dataset (csv) file. It is important to note that running this
-// function will change data in the Photoshop document, but will not update
-// data in the Go Document struct- you will have to implement syncing
-// them yourself.
-func ApplyDataset(name string) error {
-	_, err := DoJs("applyDataset.jsx", name)
+// Start opens Photoshop.
+func Start() error {
+	_, err := run("start")
 	return err
 }
 
-// JSLayer "compiles" Javascript code to get an ArtLayer with the given path.
-// The output always ends with a semicolon, so if you want to access a specific
-// property of the layer, you'll have to trim the output before concatenating.
+// Wait prints a message to the console and halts operation until the user
+// signals that they are ready to continue (by pushing enter).
 //
-// TODO: get rid of the semicolon.
-func JSLayer(path string, art ...bool) string {
-	path = strings.TrimLeft(path, "/")
-	pth := strings.Split(path, "/")
-	js := "app.activeDocument"
-	last := len(pth) - 1
-	if len(art) > 0 {
-		pth = pth[:len(pth)-1]
-		last--
-	}
-	if last > 0 {
-		for i := 0; i < last; i++ {
-			js += fmt.Sprintf(".layerSets.getByName('%s')", pth[i])
-		}
-	}
-	if pth[last] != "" {
-		js += fmt.Sprintf(".artLayers.getByName('%s')", pth[last])
-	}
-	return js + ";"
+// Useful for when you need to do something by hand in the middle of an
+// otherwise automated process. (i.e. importing a dataset).
+func Wait(msg string) {
+	fmt.Print(msg)
+	var input string
+	fmt.Scanln(&input)
+	fmt.Println()
 }
