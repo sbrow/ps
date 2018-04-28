@@ -14,7 +14,7 @@ type Color interface {
 	Hex() []uint8 // The color in hexadecimal format.
 }
 
-// Compare determines which of two colors is "brighter".
+// Compare returns the brighter of a and b.
 func Compare(a, b Color) Color {
 	A := a.RGB()
 	B := b.RGB()
@@ -26,7 +26,7 @@ func Compare(a, b Color) Color {
 	return b
 }
 
-// RGB is a color in RGB format. It implements the Color interface.
+// RGB is a color format. It implements the Color interface.
 type RGB struct {
 	Red   int
 	Green int
@@ -38,9 +38,10 @@ func (r RGB) RGB() [3]int {
 	return [3]int{r.Red, r.Green, r.Blue}
 }
 
-// TODO: Implement RGB.Hex()
 func (r RGB) Hex() []uint8 {
-	return make([]uint8, 6)
+	src := []byte([]uint8{uint8(r.Red), uint8(r.Green), uint8(r.Blue)})
+	hex := make([]byte, hex.EncodedLen(len(src)))
+	return []uint8(hex)
 }
 
 // Hex is a color in hexadecimal format. It implements the Color interface.
