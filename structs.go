@@ -753,11 +753,20 @@ func (t *TextItem) SetText(txt string) {
 		return
 	}
 	lyr := strings.TrimRight(JSLayer(t.parent.Path()), ";")
-	js := fmt.Sprintf("%s.textItem.contents='%s';", lyr, txt)
-	_, err := DoJs("compilejs.jsx", js)
-	if err != nil {
-		t.contents = txt
+	bndtext := "[[' + lyr.bounds[0] + ',' + lyr.bounds[1] + '],[' + lyr.bounds[2] + ',' + lyr.bounds[3] + ']]"
+	js := fmt.Sprintf(`%s.textItem.contents='%s';var lyr = %[1]s;stdout.writeln(('%[3]s').replace(/ px/g, ''));`,
+		lyr, txt, bndtext)
+	byt, err := DoJs("compilejs.jsx", js)
+	var bnds *[2][2]int
+	json.Unmarshal(byt, &bnds)
+	if err != nil || bnds == nil {
+		log.Println("text:", txt)
+		log.Println("js:", js)
+		fmt.Printf("byt: '%s'\n", string(byt))
+		log.Panic(err)
 	}
+	t.contents = txt
+	t.parent.bounds = *bnds
 }
 
 func (t *TextItem) SetSize(s float64) {

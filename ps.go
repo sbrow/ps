@@ -148,7 +148,7 @@ func run(name string, args ...string) ([]byte, error) {
 	if strings.Contains(name, "dojs") {
 		args = append([]string{opts, filepath.Join(pkgpath, "scripts", name)},
 			args[0],
-			fmt.Sprintf("%s", strings.Join(args[1:], ",")),
+			fmt.Sprintf("%s", strings.Join(args[1:], ",,")),
 		)
 	} else {
 		args = append([]string{opts, filepath.Join(pkgpath, "scripts", name)}, args...)
