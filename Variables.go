@@ -4,13 +4,6 @@ import (
 	"fmt"
 )
 
-// Colors enumerates some basic, commonly used colors.
-var Colors map[string]Color = map[string]Color{
-	"Black": &RGB{0, 0, 0},
-	"Gray":  &RGB{128, 128, 128},
-	"White": &RGB{255, 255, 255},
-}
-
 // ModeEnum determines how aggressively the package will attempt to sync with Photoshop.
 // Loading Photoshop files from scratch takes a long time, so the package saves
 // the state of the document in a JSON file in the /data folder whenever you call
@@ -42,12 +35,8 @@ func (p *PSSaveOptions) String() string {
 	return fmt.Sprint("", *p)
 }
 
-// PSSaveChanges saves changes before closing documents.
-const PSSaveChanges PSSaveOptions = 1
-
-// PSDoNotSaveChanges closes documents without saving.
-const PSDoNotSaveChanges PSSaveOptions = 2
-
-// PSPromptToSaveChanges prompts the user whether to save each
-// document before closing it.
-const PSPromptToSaveChanges PSSaveOptions = 3
+const (
+	PSSaveChanges         PSSaveOptions = iota + 1 // Saves changes before closing documents.
+	PSDoNotSaveChanges                             // Closes documents without saving.
+	PSPromptToSaveChanges                          // Prompts whether to save before closing.
+)
