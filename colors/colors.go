@@ -1,9 +1,21 @@
-package ps
+package colors
 
 import (
 	"encoding/hex"
 	// "fmt"
 )
+
+func Black() Color {
+	return &RGB{0, 0, 0}
+}
+
+func Gray() Color {
+	return &RGB{128, 128, 128}
+}
+
+func White() Color {
+	return &RGB{255, 255, 255}
+}
 
 // Color is an interface for color objects, allowing colors to be
 // used in various formats.
@@ -66,7 +78,3 @@ type Stroke struct {
 	Size float32
 	Color
 }
-
-// func (s *Stroke) String() string {
-// 	return fmt.Sprintf("%vpt %v", s.Size, s.Color.RGB())
-// }
