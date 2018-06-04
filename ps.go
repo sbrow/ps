@@ -16,7 +16,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	// "update"
 )
 
 // The name of the program that runs scripts on this OS.

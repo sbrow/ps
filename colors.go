@@ -1,21 +1,12 @@
-package colors
+package ps
 
-import (
-	"encoding/hex"
-	// "fmt"
+import "encoding/hex"
+
+var (
+	ColorBlack Color = RGB{0, 0, 0}
+	ColorGray  Color = RGB{128, 128, 128}
+	ColorWhite Color = RGB{255, 255, 255}
 )
-
-func Black() Color {
-	return &RGB{0, 0, 0}
-}
-
-func Gray() Color {
-	return &RGB{128, 128, 128}
-}
-
-func White() Color {
-	return &RGB{255, 255, 255}
-}
 
 // Color is an interface for color objects, allowing colors to be
 // used in various formats.

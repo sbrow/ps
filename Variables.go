@@ -1,8 +1,6 @@
 package ps
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // ModeEnum determines how aggressively the package will attempt to sync with Photoshop.
 // Loading Photoshop files from scratch takes a long time, so the package saves
