@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/sbrow/ps/colors"
 	"io/ioutil"
 	"log"
 	"os"
@@ -184,14 +183,14 @@ func (d *Document) Dump() {
 //
 // TODO: (2) Make TextLayer a subclass of ArtLayer.
 type ArtLayer struct {
-	name           string    // The layer's name.
-	bounds         [2][2]int // The corners of the layer's bounding box.
-	parent         Group     // The LayerSet/Document this layer is in.
-	visible        bool      // Whether or not the layer is visible.
-	current        bool      // Whether we've checked this layer since we loaded from disk.
-	colors.Color             // The layer's color overlay effect (if any).
-	*colors.Stroke           // The layer's stroke effect (if any).
-	*TextItem                // The layer's text, if it's a text layer.
+	name      string    // The layer's name.
+	bounds    [2][2]int // The corners of the layer's bounding box.
+	parent    Group     // The LayerSet/Document this layer is in.
+	visible   bool      // Whether or not the layer is visible.
+	current   bool      // Whether we've checked this layer since we loaded from disk.
+	Color               // The layer's color overlay effect (if any).
+	*Stroke             // The layer's stroke effect (if any).
+	*TextItem           // The layer's text, if it's a text layer.
 }
 
 // Bounds returns the coordinates of the corners of the ArtLayer's bounding box.
@@ -233,8 +232,8 @@ func (a *ArtLayer) UnmarshalJSON(b []byte) error {
 	}
 	a.name = tmp.Name
 	a.bounds = tmp.Bounds
-	a.Color = colors.RGB{tmp.Color[0], tmp.Color[1], tmp.Color[2]}
-	a.Stroke = &colors.Stroke{tmp.StrokeAmt, colors.RGB{tmp.Stroke[0], tmp.Stroke[1], tmp.Stroke[2]}}
+	a.Color = RGB{tmp.Color[0], tmp.Color[1], tmp.Color[2]}
+	a.Stroke = &Stroke{tmp.StrokeAmt, RGB{tmp.Stroke[0], tmp.Stroke[1], tmp.Stroke[2]}}
 	a.visible = tmp.Visible
 	a.current = false
 	a.TextItem = tmp.TextItem
@@ -285,7 +284,7 @@ func (a *ArtLayer) SetActive() ([]byte, error) {
 }
 
 // SetColor creates a color overlay for the layer
-func (a *ArtLayer) SetColor(c colors.Color) {
+func (a *ArtLayer) SetColor(c Color) {
 	if a.Color.RGB() == c.RGB() {
 		if Mode == 2 || (Mode == 0 && a.current) {
 			// log.Println("Skipping color: already set.")
@@ -319,7 +318,7 @@ func (a *ArtLayer) SetColor(c colors.Color) {
 	}
 }
 
-func (a *ArtLayer) SetStroke(stk colors.Stroke, fill colors.Color) {
+func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
 	if stk.Size == 0 {
 		a.Stroke = &stk
 		a.SetColor(fill)
