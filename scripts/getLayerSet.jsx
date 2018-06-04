@@ -3,6 +3,10 @@ var stdout = newFile(arguments[0]);
 var set = eval(arguments[1]);
 stdout.writeln('{"Name": "'+set.name+'", "Visible": '+ set.visible +', "ArtLayers":[');
 stdout.flush();
+var str = layers(set.artLayers);
+str = str.replace(/\r/g, "\\r");
+stdout.writeln(str);
+/*
 for (var i = 0; i < set.artLayers.length; i++) {
 	var lyr = set.artLayers[i];
 	stdout.write(('{"Name":"' + lyr.name + '", "Bounds": [[' + lyr.bounds[0] + ',' +
@@ -17,6 +21,7 @@ for (var i = 0; i < set.artLayers.length; i++) {
 		stdout.writeln(",");
 	stdout.flush();
 }
+*/
 stdout.writeln("]");
 stdout.write(', "LayerSets": [')
 for (var i = 0; i < set.layerSets.length; i++) {
@@ -27,13 +32,6 @@ for (var i = 0; i < set.layerSets.length; i++) {
 	stdout.flush()
 }
 stdout.writeln(']')
-// app.activeDocument.activeLayer=set;
-// set.merge();
-// set=eval(arguments[2]);
 stdout.write(', "Bounds": [[],[]]');
-// stdout.write((', "Bounds": [[' + set.bounds[0] + ',' +
-		// set.bounds[1] + '],[' + set.bounds[2] + ',' + 
-	    // set.bounds[3] + ']]').replace(/ px/g, ""));
 stdout.write("}");
-// Undo();
 stdout.close();

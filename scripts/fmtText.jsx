@@ -1,12 +1,12 @@
-var start = parseInt(arguments[1]);
-var end = parseInt(arguments[2]);
-var fontName = arguments[3];
-var fontStyle = arguments[4];
-var colorArray = [0, 0, 0];
 if(app.activeDocument.activeLayer.kind == LayerKind.TEXT){
     var activeLayer = app.activeDocument.activeLayer;
-	var fontSize = activeLayer.textItem.size;
     if(activeLayer.kind == LayerKind.TEXT){
+        var start = parseInt(arguments[1]);
+        var end = parseInt(arguments[2]);
+        var fontName = arguments[3];
+        var fontStyle = arguments[4];
+        var fontSize = activeLayer.textItem.size;
+        var colorArray = [0, 0, 0];
         if((activeLayer.textItem.contents != "")&&(start >= 0)&&(end <= activeLayer.textItem.contents.length)){
             var idsetd = app.charIDToTypeID( "setd" );
             var action = new ActionDescriptor();

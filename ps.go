@@ -2,6 +2,8 @@
 // The interaction between the two is implemented using Javascript/VBScript.
 //
 // Currently only supports Photoshop CS5 Windows x86_64.
+//
+// TODO: Creatue a Photoshop struct to hold program values and functions.
 package ps
 
 import (
@@ -9,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	// "log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,11 +35,16 @@ func init() {
 	case "darwin":
 		scmd = "osacript"
 	}
+	// update.Update()
 }
 
-// Start opens Photoshop.
-func Start() error {
-	_, err := run("start")
+// ApplyDataset fills out a template file with information
+// from a given dataset (csv) file. It is important to note that running this
+// function will change data in the Photoshop document, but will not update
+// data in the Go Document struct- you will have to implement syncing
+// them yourself.
+func ApplyDataset(name string) error {
+	_, err := DoJs("applyDataset.jsx", name)
 	return err
 }
 
@@ -48,28 +54,14 @@ func Close(save PSSaveOptions) error {
 	return err
 }
 
-// Open opens a Photoshop document with the specified path.
-// If Photoshop is not currently running, it is started before
-// opening the document.
-func Open(path string) error {
-	_, err := run("open", path)
-	return err
-}
-
-// Quit exits Photoshop with the given saving option.
-func Quit(save PSSaveOptions) error {
-	_, err := run("quit", save.String())
-	return err
-}
-
-// SaveAs saves the Photoshop document to the given location.
-func SaveAs(path string) error {
-	_, err := run("save", path)
+// DoAction runs the Photoshop Action "name" from the Action Set "set".
+func DoAction(set, name string) error {
+	_, err := run("action", set, name)
 	return err
 }
 
 // DoJs runs a Photoshop Javascript script file (.jsx) from the specified location.
-// It can't directly return output, so instead the script must write their output to
+// The script can't directly return output, so instead it writes output to
 // a temporary file ($TEMP/js_out.txt), whose contents is then read and returned.
 func DoJs(path string, args ...string) (out []byte, err error) {
 	// Temp file for js to output to.
@@ -97,68 +89,6 @@ func DoJs(path string, args ...string) (out []byte, err error) {
 	return cmd, err
 }
 
-// Wait prints a message to the console and halts operation until the user
-// signals that they are ready (by pushing enter).
-//
-// Useful for when you need to do something by hand in the middle of an
-// otherwise automated process. (i.e. loading a dataset).
-func Wait(msg string) {
-	fmt.Print(msg)
-	var input string
-	fmt.Scanln(&input)
-	fmt.Println()
-}
-
-// run handles running the script files, returning output, and displaying errors.
-func run(name string, args ...string) ([]byte, error) {
-	var ext string
-	var out bytes.Buffer
-	var errs bytes.Buffer
-
-	switch runtime.GOOS {
-	case "windows":
-		ext = ".vbs"
-	case "darwin":
-		ext = ".applescript"
-	}
-	if !strings.HasSuffix(name, ext) {
-		name += ext
-	}
-
-	if strings.Contains(name, "dojs") {
-		args = append([]string{opts, filepath.Join(pkgpath, "scripts", name)},
-			args[0],
-			fmt.Sprintf("%s", strings.Join(args[1:], ",")),
-		)
-	} else {
-		args = append([]string{opts, filepath.Join(pkgpath, "scripts", name)}, args...)
-	}
-	cmd := exec.Command(scmd, args...)
-	cmd.Stdout = &out
-	cmd.Stderr = &errs
-	err := cmd.Run()
-	if err != nil || len(errs.Bytes()) != 0 {
-		return out.Bytes(), errors.New(string(errs.Bytes()))
-	}
-	return out.Bytes(), nil
-}
-
-// DoAction runs the Photoshop Action "name" from the Action Set "set".
-func DoAction(set, name string) error {
-	_, err := run("action", set, name)
-	return err
-}
-
-// ApplyDataset fills out a template file with information
-// from a given dataset (csv) file. It is important to note that running this
-// function will change data in the Photoshop document, but will not update
-// data in the Go Document struct- you will have to implement syncing
-// them yourself.
-func ApplyDataset(name string) error {
-	_, err := DoJs("applyDataset.jsx", name)
-	return err
-}
-
 // JSLayer "compiles" Javascript code to get an ArtLayer with the given path.
 // The output always ends with a semicolon, so if you want to access a specific
 // property of the layer, you'll have to trim the output before concatenating.
@@ -182,4 +112,76 @@ func JSLayer(path string, art ...bool) string {
 		js += fmt.Sprintf(".artLayers.getByName('%s')", pth[last])
 	}
 	return js + ";"
+}
+
+// Open opens a Photoshop document with the specified path.
+// If Photoshop is not currently running, it is started before
+// opening the document.
+func Open(path string) error {
+	_, err := run("open", path)
+	return err
+}
+
+// Quit exits Photoshop using the given save option.
+func Quit(save PSSaveOptions) error {
+	_, err := run("quit", save.String())
+	return err
+}
+
+// run handles running the script files, returning output, and displaying errors.
+func run(name string, args ...string) ([]byte, error) {
+	var ext string
+	var out bytes.Buffer
+	var errs bytes.Buffer
+
+	switch runtime.GOOS {
+	case "windows":
+		ext = ".vbs"
+	case "darwin":
+		ext = ".applescript"
+	}
+	if !strings.HasSuffix(name, ext) {
+		name += ext
+	}
+
+	if strings.Contains(name, "dojs") {
+		args = append([]string{opts, filepath.Join(pkgpath, "scripts", name)},
+			args[0],
+			fmt.Sprintf("%s", strings.Join(args[1:], ",,")),
+		)
+	} else {
+		args = append([]string{opts, filepath.Join(pkgpath, "scripts", name)}, args...)
+	}
+	cmd := exec.Command(scmd, args...)
+	cmd.Stdout = &out
+	cmd.Stderr = &errs
+	err := cmd.Run()
+	if err != nil || len(errs.Bytes()) != 0 {
+		return out.Bytes(), errors.New(string(errs.Bytes()))
+	}
+	return out.Bytes(), nil
+}
+
+// SaveAs saves the Photoshop document to the given location.
+func SaveAs(path string) error {
+	_, err := run("save", path)
+	return err
+}
+
+// Start opens Photoshop.
+func Start() error {
+	_, err := run("start")
+	return err
+}
+
+// Wait prints a message to the console and halts operation until the user
+// signals that they are ready to continue (by pushing enter).
+//
+// Useful for when you need to do something by hand in the middle of an
+// otherwise automated process. (i.e. importing a dataset).
+func Wait(msg string) {
+	fmt.Print(msg)
+	var input string
+	fmt.Scanln(&input)
+	fmt.Println()
 }
