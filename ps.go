@@ -3,7 +3,7 @@
 //
 // Currently only supports Photoshop CS5 Windows x86_64.
 //
-// TODO: Creatue a Photoshop struct to hold program values and functions.
+// TODO: Create a Photoshop struct to hold program values and functions.
 package ps
 
 import (
@@ -18,11 +18,12 @@ import (
 	"strings"
 )
 
-// The name of the program that runs scripts on this OS.
+// opts are the options we need to pass to scmd.
+var opts string
+
+// scmd is the name of the program that runs scripts on this OS.
 var scmd string
 
-// The options we need to pass to scmd.
-var opts string
 var pkgpath string
 
 func init() {
@@ -35,11 +36,10 @@ func init() {
 	case "darwin":
 		scmd = "osacript"
 	}
-	// update.Update()
 }
 
 // ApplyDataset fills out a template file with information
-// from a given dataset (csv) file. It is important to note that running this
+// from a given dataset (csv) file. It's important to note that running this
 // function will change data in the Photoshop document, but will not update
 // data in the Go Document struct- you will have to implement syncing
 // them yourself.
@@ -49,14 +49,15 @@ func ApplyDataset(name string) error {
 }
 
 // Close closes the active document in Photoshop, using the given save option.
-func Close(save PSSaveOptions) error {
+// TODO: Move to Document
+func Close(save SaveOption) error {
 	_, err := run("close", save.String())
 	return err
 }
 
-// DoAction runs the Photoshop Action "name" from the Action Set "set".
-func DoAction(set, name string) error {
-	_, err := run("action", set, name)
+// DoAction runs the Photoshop Action with the given name from the Action Set "from".
+func DoAction(action, from string) error {
+	_, err := run("action", action, from)
 	return err
 }
 
@@ -87,6 +88,14 @@ func DoJs(path string, args ...string) (out []byte, err error) {
 		}
 	}
 	return cmd, err
+}
+
+// Init opens Photoshop if it is not open already.
+//
+// Init should be called before all other
+func Init() error {
+	_, err := run("start")
+	return err
 }
 
 // JSLayer "compiles" Javascript code to get an ArtLayer with the given path.
@@ -122,8 +131,8 @@ func Open(path string) error {
 	return err
 }
 
-// Quit exits Photoshop using the given save option.
-func Quit(save PSSaveOptions) error {
+// Quit exits Photoshop, closing all open docuemnts using the given save option.
+func Quit(save SaveOption) error {
 	_, err := run("quit", save.String())
 	return err
 }
@@ -131,8 +140,7 @@ func Quit(save PSSaveOptions) error {
 // run handles running the script files, returning output, and displaying errors.
 func run(name string, args ...string) ([]byte, error) {
 	var ext string
-	var out bytes.Buffer
-	var errs bytes.Buffer
+	var out, errs bytes.Buffer
 
 	switch runtime.GOOS {
 	case "windows":
@@ -147,7 +155,7 @@ func run(name string, args ...string) ([]byte, error) {
 	if strings.Contains(name, "dojs") {
 		args = append([]string{opts, filepath.Join(pkgpath, "scripts", name)},
 			args[0],
-			fmt.Sprintf("%s", strings.Join(args[1:], ",,")),
+			fmt.Sprint(strings.Join(args[1:], ",,")),
 		)
 	} else {
 		args = append([]string{opts, filepath.Join(pkgpath, "scripts", name)}, args...)
@@ -157,7 +165,7 @@ func run(name string, args ...string) ([]byte, error) {
 	cmd.Stderr = &errs
 	err := cmd.Run()
 	if err != nil || len(errs.Bytes()) != 0 {
-		return out.Bytes(), errors.New(string(errs.Bytes()))
+		return out.Bytes(), errors.New(errs.String())
 	}
 	return out.Bytes(), nil
 }
@@ -165,12 +173,6 @@ func run(name string, args ...string) ([]byte, error) {
 // SaveAs saves the Photoshop document to the given location.
 func SaveAs(path string) error {
 	_, err := run("save", path)
-	return err
-}
-
-// Start opens Photoshop.
-func Start() error {
-	_, err := run("start")
 	return err
 }
 

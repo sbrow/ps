@@ -42,9 +42,9 @@ func (r RGB) RGB() [3]int {
 }
 
 func (r RGB) Hex() []uint8 {
-	src := []byte([]uint8{uint8(r.Red), uint8(r.Green), uint8(r.Blue)})
+	src := []uint8{uint8(r.Red), uint8(r.Green), uint8(r.Blue)}
 	hex := make([]byte, hex.EncodedLen(len(src)))
-	return []uint8(hex)
+	return hex
 }
 
 // Hex is a color in hexadecimal format. It implements the Color interface.

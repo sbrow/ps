@@ -13,21 +13,24 @@ import (
 func TestPkgPath(t *testing.T) {
 	out := filepath.Join(os.Getenv("GOPATH"), "src", "github.com", "sbrow", "ps")
 	if filepath.Join(pkgpath) != out {
-		t.Fatal(filepath.Join(pkgpath), out)
+		t.Error(filepath.Join(pkgpath), out)
 	}
 }
 
-func TestStart(t *testing.T) {
-	err := Start()
+func TestInit(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping \"TestStart\"")
+	}
+	err := Init()
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 }
 
 func TestOpen(t *testing.T) {
-	// if testing.Short() {
-	// 	t.Skip("Skipping \"TestOpen\"")
-	// }
+	if testing.Short() {
+		t.Skip("Skipping \"TestOpen\"")
+	}
 	err := Open("F:\\GitLab\\dreamkeepers-psd\\Template009.1.psd")
 	if err != nil {
 		t.Fatal(err)
@@ -55,15 +58,19 @@ func TestQuit(t *testing.T) {
 }
 
 func TestDoJs(t *testing.T) {
-	out := []byte("F:\\TEMP\\js_out.txt\r\narg\r\nargs\r\n")
+	err := Open("F:\\GitLab\\dreamkeepers-psd\\Template009.1.psd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []byte("F:\\TEMP\\js_out.txt\r\narg\r\nargs\r\n")
 	script := "test.jsx"
 	ret, err := DoJs(script, "arg", "args")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(ret) != string(out) {
-		fail := fmt.Sprintf("TestJS failed.\ngot:\t\"%s\"\nwant:\t\"%s\"", ret, out)
-		t.Fatal(fail)
+	if string(ret) != string(want) {
+		fail := fmt.Sprintf("TestJS failed.\ngot:\t\"%s\"\nwant:\t\"%s\"", ret, want)
+		t.Error(fail)
 	}
 }
 
@@ -143,6 +150,7 @@ func TestActiveDocument(t *testing.T) {
 		t.Skip("Skipping \"TestDocument\"")
 	}
 	d, err := ActiveDocument()
+	defer d.Dump()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +177,6 @@ func TestActiveDocument(t *testing.T) {
 	}
 	s := Stroke{Size: 4, Color: &RGB{0, 0, 0}}
 	lyr.SetStroke(s, &RGB{128, 128, 128})
-	d.Dump()
 }
 
 func TestColor(t *testing.T) {
@@ -237,7 +244,7 @@ func TestDoJs_HideLayer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lyr, err := NewLayerSet("Areas/TitleBackground", nil)
+	lyr, err := NewLayerSet("Areas/TitleBackground/", nil)
 	lyr.SetVisible(false)
 	if err != nil {
 		t.Fatal(err)
