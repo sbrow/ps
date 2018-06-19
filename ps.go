@@ -2,40 +2,28 @@
 // The interaction between the two is implemented using Javascript/VBScript.
 //
 // Currently only supports Photoshop CS5 Windows x86_64.
-//
-// TODO: Create a Photoshop struct to hold program values and functions.
+//go:generate godocdown -output=README.md
 package ps
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/sbrow/ps/runner"
 )
 
-// opts are the options we need to pass to scmd.
-var opts string
-
-// scmd is the name of the program that runs scripts on this OS.
-var scmd string
-
+// The full path to this directory.
 var pkgpath string
 
 func init() {
 	_, file, _, _ := runtime.Caller(0)
 	pkgpath = filepath.Dir(file)
-	switch runtime.GOOS {
-	case "windows":
-		scmd = "cscript.exe"
-		opts = "/nologo"
-	case "darwin":
-		scmd = "osacript"
-	}
 }
 
 // ApplyDataset fills out a template file with information
@@ -44,47 +32,60 @@ func init() {
 // data in the Go Document struct- you will have to implement syncing
 // them yourself.
 func ApplyDataset(name string) error {
-	_, err := DoJs("applyDataset.jsx", name)
+	_, err := DoJS("applyDataset.jsx", name)
 	return err
 }
 
 // Close closes the active document in Photoshop, using the given save option.
 // TODO: Move to Document
 func Close(save SaveOption) error {
-	_, err := run("close", save.String())
+	_, err := runner.Run("close", fmt.Sprint(save))
 	return err
 }
 
 // DoAction runs the Photoshop Action with the given name from the Action Set "from".
 func DoAction(action, from string) error {
-	_, err := run("action", action, from)
+	_, err := runner.Run("action", action, from)
 	return err
 }
 
-// DoJs runs a Photoshop Javascript script file (.jsx) from the specified location.
+// DoJS runs a Photoshop Javascript script file (.jsx) from the specified location.
 // The script can't directly return output, so instead it writes output to
 // a temporary file ($TEMP/js_out.txt), whose contents is then read and returned.
-func DoJs(path string, args ...string) (out []byte, err error) {
+func DoJS(path string, args ...string) ([]byte, error) {
+	// var err error
 	// Temp file for js to output to.
-	outpath := filepath.Join(os.Getenv("TEMP"), "js_out.txt")
-	// defer os.Remove(outpath)
+	outpath, err := ioutil.TempFile(os.Getenv("TEMP"), "")
+	defer func() {
+		if err = outpath.Close(); err != nil {
+			log.Println(err)
+		}
+		if err = os.Remove(outpath.Name()); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	if err != nil {
+		return nil, err
+	}
 	if !strings.HasSuffix(path, ".jsx") {
 		path += ".jsx"
 	}
 
-	args = append([]string{outpath}, args...)
+	args = append([]string{outpath.Name()}, args...)
 
 	// If passed a script by name, assume it's in the default folder.
 	if filepath.Dir(path) == "." {
-		path = filepath.Join(pkgpath, "scripts", path)
+		path = filepath.Join(pkgpath, "runner", "scripts", path)
 	}
 
 	args = append([]string{path}, args...)
-	cmd, err := run("dojs", args...)
+	cmd, err := runner.Run("dojs", args...)
 	if err == nil {
-		file, err := ioutil.ReadFile(outpath)
+		var data []byte
+		data, err = ioutil.ReadFile(outpath.Name())
 		if err == nil {
-			cmd = append(cmd, file...)
+			cmd = append(cmd, data...)
 		}
 	}
 	return cmd, err
@@ -94,7 +95,7 @@ func DoJs(path string, args ...string) (out []byte, err error) {
 //
 // Init should be called before all other
 func Init() error {
-	_, err := run("start")
+	_, err := runner.Run("start")
 	return err
 }
 
@@ -103,15 +104,10 @@ func Init() error {
 // property of the layer, you'll have to trim the output before concatenating.
 //
 // TODO: get rid of the semicolon.
-func JSLayer(path string, art ...bool) string {
-	path = strings.TrimLeft(path, "/")
+func JSLayer(path string) string {
 	pth := strings.Split(path, "/")
 	js := "app.activeDocument"
 	last := len(pth) - 1
-	if len(art) > 0 {
-		pth = pth[:len(pth)-1]
-		last--
-	}
 	if last > 0 {
 		for i := 0; i < last; i++ {
 			js += fmt.Sprintf(".layerSets.getByName('%s')", pth[i])
@@ -123,56 +119,33 @@ func JSLayer(path string, art ...bool) string {
 	return js + ";"
 }
 
+// JSLayerMerge gets the Javascript code to get the Layer or LayerSet with this path
+// and returns the result if you were to merge the bottom-most LayerSet.
+//
+// If the bottom-most Object in the path is not a LayerSet, it will returns the same
+// results as JSLayer.
+func JSLayerMerge(path string) string {
+	reg := regexp.MustCompile(`layerSets(\.getByName\('[^']*'\)($|[^.]))`)
+	return reg.ReplaceAllString(JSLayer(path), "artLayers$1")
+}
+
 // Open opens a Photoshop document with the specified path.
 // If Photoshop is not currently running, it is started before
 // opening the document.
 func Open(path string) error {
-	_, err := run("open", path)
+	_, err := runner.Run("open", path)
 	return err
 }
 
 // Quit exits Photoshop, closing all open docuemnts using the given save option.
 func Quit(save SaveOption) error {
-	_, err := run("quit", save.String())
+	_, err := runner.Run("quit", fmt.Sprint(save))
 	return err
-}
-
-// run handles running the script files, returning output, and displaying errors.
-func run(name string, args ...string) ([]byte, error) {
-	var ext string
-	var out, errs bytes.Buffer
-
-	switch runtime.GOOS {
-	case "windows":
-		ext = ".vbs"
-	case "darwin":
-		ext = ".applescript"
-	}
-	if !strings.HasSuffix(name, ext) {
-		name += ext
-	}
-
-	if strings.Contains(name, "dojs") {
-		args = append([]string{opts, filepath.Join(pkgpath, "scripts", name)},
-			args[0],
-			fmt.Sprint(strings.Join(args[1:], ",,")),
-		)
-	} else {
-		args = append([]string{opts, filepath.Join(pkgpath, "scripts", name)}, args...)
-	}
-	cmd := exec.Command(scmd, args...)
-	cmd.Stdout = &out
-	cmd.Stderr = &errs
-	err := cmd.Run()
-	if err != nil || len(errs.Bytes()) != 0 {
-		return out.Bytes(), errors.New(errs.String())
-	}
-	return out.Bytes(), nil
 }
 
 // SaveAs saves the Photoshop document to the given location.
 func SaveAs(path string) error {
-	_, err := run("save", path)
+	_, err := runner.Run("save", path)
 	return err
 }
 
@@ -180,10 +153,11 @@ func SaveAs(path string) error {
 // signals that they are ready to continue (by pushing enter).
 //
 // Useful for when you need to do something by hand in the middle of an
-// otherwise automated process. (i.e. importing a dataset).
+// otherwise automated process, (e.g. importing a dataset).
 func Wait(msg string) {
-	fmt.Print(msg)
 	var input string
+
+	fmt.Print(msg)
 	fmt.Scanln(&input)
 	fmt.Println()
 }

@@ -1,0 +1,3 @@
+C:\Users\Spencer\go\src\github.com\sbrow\ps\runner\scripts\test.txt
+arg1
+arg2

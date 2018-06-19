@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	"github.com/sbrow/ps/runner"
 )
 
 // ArtLayer reflects some values from an Art Layer in a Photoshop document.
@@ -32,10 +34,10 @@ func (a *ArtLayer) Bounds() [2][2]int {
 type ArtLayerJSON struct {
 	Name      string
 	Bounds    [2][2]int
-	Visible   bool
 	Color     [3]int
 	Stroke    [3]int
 	StrokeAmt float32
+	Visible   bool
 	TextItem  *TextItem
 }
 
@@ -53,6 +55,7 @@ func (a *ArtLayer) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalJSON loads json data into the object.
 func (a *ArtLayer) UnmarshalJSON(b []byte) error {
 	tmp := &ArtLayerJSON{}
 	if err := json.Unmarshal(b, &tmp); err != nil {
@@ -71,6 +74,7 @@ func (a *ArtLayer) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// Name returns the layer's name.
 func (a *ArtLayer) Name() string {
 	return a.name
 }
@@ -100,6 +104,7 @@ func (a *ArtLayer) Y2() int {
 	return a.bounds[1][1]
 }
 
+// SetParent sets Group c to be the group that holds this layer.
 func (a *ArtLayer) SetParent(c Group) {
 	a.parent = c
 }
@@ -108,7 +113,7 @@ func (a *ArtLayer) SetParent(c Group) {
 // Layers need to be active to perform certain operations
 func (a *ArtLayer) SetActive() ([]byte, error) {
 	js := fmt.Sprintf("app.activeDocument.activeLayer=%s", JSLayer(a.Path()))
-	return DoJs("compilejs.jsx", js)
+	return DoJS("compilejs.jsx", js)
 }
 
 // SetColor creates a color overlay for the layer
@@ -137,7 +142,7 @@ func (a *ArtLayer) SetColor(c Color) {
 		log.Println(a.Path())
 		log.Panic(err)
 	}
-	byt, err = run("colorLayer", fmt.Sprint(r), fmt.Sprint(g), fmt.Sprint(b))
+	byt, err = runner.Run("colorLayer", fmt.Sprint(r), fmt.Sprint(g), fmt.Sprint(b))
 	if len(byt) != 0 {
 		log.Println(string(byt), "err")
 	}
@@ -146,6 +151,9 @@ func (a *ArtLayer) SetColor(c Color) {
 	}
 }
 
+// SetStroke edits the "aura" around the layer. If a nil stroke is given,
+// The current stroke is removed. If a non-nil stroke is given and the
+// current stroke is nil, a stroke is added.
 func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
 	if stk.Size == 0 {
 		a.Stroke = &stk
@@ -176,7 +184,7 @@ func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
 	col := fill.RGB()
 	log.Printf("Setting layer %s stroke to %.2fpt %v and color to %v\n", a.name, a.Stroke.Size,
 		a.Stroke.Color.RGB(), a.Color.RGB())
-	byt, err = run("colorStroke", fmt.Sprint(col[0]), fmt.Sprint(col[1]), fmt.Sprint(col[2]),
+	byt, err = runner.Run("colorStroke", fmt.Sprint(col[0]), fmt.Sprint(col[1]), fmt.Sprint(col[2]),
 		fmt.Sprintf("%.2f", stk.Size), fmt.Sprint(stkCol[0]), fmt.Sprint(stkCol[1]), fmt.Sprint(stkCol[2]))
 	if len(byt) != 0 {
 		log.Println(string(byt))
@@ -186,23 +194,9 @@ func (a *ArtLayer) SetStroke(stk Stroke, fill Color) {
 	}
 }
 
+// Path returns the Path to this layer, through all of its parents.
 func (a *ArtLayer) Path() string {
 	return fmt.Sprintf("%s%s", a.parent.Path(), a.name)
-}
-
-// Layer returns an ArtLayer from the active document given a specified
-// path string.
-func layer(path string) (ArtLayer, error) {
-	byt, err := DoJs("getLayer.jsx", JSLayer(path))
-	if err != nil {
-		return ArtLayer{}, err
-	}
-	var out ArtLayer
-	err = json.Unmarshal(byt, &out)
-	if err != nil {
-		return ArtLayer{}, err
-	}
-	return out, err
 }
 
 // SetVisible makes the layer visible.
@@ -219,7 +213,9 @@ func (a *ArtLayer) SetVisible(b bool) {
 	}
 	js := fmt.Sprintf("%s.visible=%v;",
 		strings.TrimRight(JSLayer(a.Path()), ";"), b)
-	DoJs("compilejs.jsx", js)
+	if byt, err := DoJS("compilejs.jsx", js); err != nil {
+		log.Println(string(byt), err)
+	}
 }
 
 // Visible returns whether or not the layer is currently hidden.
@@ -250,8 +246,11 @@ func (a *ArtLayer) SetPos(x, y int, bound string) {
 	default:
 		lyrX = a.X1()
 	}
-	byt, err := DoJs("moveLayer.jsx", JSLayer(a.Path()), fmt.Sprint(x-lyrX), fmt.Sprint(y-lyrY))
+	byt, err := DoJS("moveLayer.jsx", JSLayer(a.Path()),
+		fmt.Sprint(x-lyrX), fmt.Sprint(y-lyrY),
+	)
 	if err != nil {
+		fmt.Printf("%+v %+v\n", a.Parent(), a.Path())
 		panic(err)
 	}
 	var lyr ArtLayer
@@ -262,9 +261,15 @@ func (a *ArtLayer) SetPos(x, y int, bound string) {
 	a.bounds = lyr.bounds
 }
 
+// Refresh syncs the layer with Photoshop.
 func (a *ArtLayer) Refresh() error {
-	tmp, err := layer(a.Path())
-	if err != nil {
+	var tmp *ArtLayer
+	data, err := DoJS("getLayer.jsx", JSLayer(a.Path()))
+	if err != nil && len(err.Error()) > 0 {
+		return err
+	}
+	if err = json.Unmarshal(data, &tmp); err != nil {
+		fmt.Println(string(data))
 		return err
 	}
 	tmp.SetParent(a.Parent())

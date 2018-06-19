@@ -5,15 +5,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
+
+	"github.com/sbrow/ps/runner"
 )
 
+var testDoc string
+
+func init() {
+	Mode = Normal
+	log.Printf("Running in mode %v\n", Mode)
+	testDoc = filepath.Join(pkgpath, "test.psd")
+}
+
 func TestPkgPath(t *testing.T) {
-	out := filepath.Join(os.Getenv("GOPATH"), "src", "github.com", "sbrow", "ps")
-	if filepath.Join(pkgpath) != out {
-		t.Error(filepath.Join(pkgpath), out)
+	want := filepath.Join(os.Getenv("GOPATH"), "src", "github.com", "sbrow", "ps")
+	got := filepath.Join(pkgpath)
+	if got != want {
+		t.Errorf("wanted: %s\ngot: %s", want, got)
 	}
 }
 
@@ -21,8 +34,8 @@ func TestInit(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestStart\"")
 	}
-	err := Init()
-	if err != nil {
+	Quit(2)
+	if err := Init(); err != nil {
 		t.Error(err)
 	}
 }
@@ -31,8 +44,8 @@ func TestOpen(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestOpen\"")
 	}
-	err := Open("F:\\GitLab\\dreamkeepers-psd\\Template009.1.psd")
-	if err != nil {
+	if err := Open(testDoc); err != nil {
+		log.Println(testDoc)
 		t.Fatal(err)
 	}
 }
@@ -51,6 +64,7 @@ func TestQuit(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestQuit\"")
 	}
+	Init()
 	err := Quit(2)
 	if err != nil {
 		t.Fatal(err)
@@ -58,25 +72,25 @@ func TestQuit(t *testing.T) {
 }
 
 func TestDoJs(t *testing.T) {
-	err := Open("F:\\GitLab\\dreamkeepers-psd\\Template009.1.psd")
-	if err != nil {
+	var err error
+	if err = Open(testDoc); err != nil {
 		t.Fatal(err)
 	}
-	want := []byte("F:\\TEMP\\js_out.txt\r\narg\r\nargs\r\n")
+	want := "F:\\\\TEMP\\\\[0-9]*\r\narg\r\nargs\r\n"
 	script := "test.jsx"
-	ret, err := DoJs(script, "arg", "args")
-	if err != nil {
+	var got []byte
+	if got, err = DoJS(script, "arg", "args"); err != nil {
 		t.Fatal(err)
 	}
-	if string(ret) != string(want) {
-		fail := fmt.Sprintf("TestJS failed.\ngot:\t\"%s\"\nwant:\t\"%s\"", ret, want)
+	if b, err := regexp.Match(want, got); err != nil || !b {
+		fail := fmt.Sprintf("wanted: %s\ngot: %s err: %s\n", want, got, err)
 		t.Error(fail)
 	}
 }
 
 func TestRun(t *testing.T) {
 	out := []byte("hello,\r\nworld!\r\n")
-	msg, err := run("test", "hello,", "world!")
+	msg, err := runner.Run("test", "hello,", "world!")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,13 +108,12 @@ func TestDoAction_Crop(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestDoAction_Crop\"")
 	}
-	err := Open("F:\\GitLab\\dreamkeepers-psd\\Template009.1.psd")
-	if err != nil {
+	var err error
+	if err = Open(testDoc); err != nil {
 		t.Fatal(err)
 	}
-	err = DoAction("DK", "Crop")
-	if err != nil {
-		t.Fatal(err)
+	if err = DoAction("DK", "Crop"); err != nil {
+		t.Error(err)
 	}
 }
 
@@ -108,47 +121,37 @@ func TestDoAction_Undo(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestDoAction_Undo\"")
 	}
-	err := DoAction("DK", "Undo")
-	if err != nil {
+	if err := DoAction("DK", "Undo"); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestSaveAs(t *testing.T) {
-	err := SaveAs("F:\\TEMP\\test.png")
-	if err != nil {
+	if err := SaveAs("F:\\TEMP\\test.png"); err != nil {
 		t.Fatal(err)
 	}
 	os.Remove("F:\\TEMP\\test.png")
 }
 
 func TestLayerSet(t *testing.T) {
-	_, err := NewLayerSet("Areas/TitleBackground/", nil)
-	if err != nil {
+	if _, err := NewLayerSet("Group 1/", nil); err != nil {
 		t.Fatal(err)
 	}
 }
-
-func TestLayer(t *testing.T) {
-	_, err := layer("Border/Inner Border")
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestMove(t *testing.T) {
-	lyr, err := layer("Group 1/Layer 1")
+	d, err := ActiveDocument()
 	if err != nil {
 		t.Fatal(err)
 	}
+	lyr := d.LayerSet("Group 1").ArtLayer("Layer 1")
 	lyr.SetPos(100, 50, "TL")
 }
 
 func TestActiveDocument(t *testing.T) {
-	Mode = Safe
 	if testing.Short() {
 		t.Skip("Skipping \"TestDocument\"")
 	}
+	Open(testDoc)
 	d, err := ActiveDocument()
 	defer d.Dump()
 	if err != nil {
@@ -170,8 +173,7 @@ func TestActiveDocument(t *testing.T) {
 		fmt.Println(d.layerSets[0].artLayers[0].Parent())
 		t.Fatal("Layerset's ArtLayers do not have correct parents")
 	}
-	// d.LayerSet("Areas").LayerSet("Bottom").ArtLayer("L Bar").SetColor(155, 255, 255)
-	lyr := d.LayerSet("Text").ArtLayer("speed")
+	lyr := d.LayerSet("Group 1").ArtLayer("Layer 1")
 	if lyr == nil {
 		t.Fatal("lyr does not exist")
 	}
@@ -180,7 +182,7 @@ func TestActiveDocument(t *testing.T) {
 }
 
 func TestColor(t *testing.T) {
-	byt, err := run("colorLayer.vbs", "255", "255", "255")
+	byt, err := runner.Run("colorLayer.vbs", "255", "255", "255")
 	fmt.Println(string(byt))
 	fmt.Println(err)
 	if err != nil {
@@ -204,15 +206,15 @@ func TestDocumentLayerSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	set := d.LayerSet("Text")
+	set := d.LayerSet("Group 1")
 	fmt.Println(set)
 	for _, lyr := range set.ArtLayers() {
 		fmt.Println(lyr.name)
 	}
-	lyr := set.ArtLayer("id")
+	lyr := set.ArtLayer("Layer 1")
 	fmt.Println(lyr)
-	set = d.LayerSet("Indicators").LayerSet("Life")
-	fmt.Println(set)
+	// set = d.LayerSet("Indicators").LayerSet("Life")
+	// fmt.Println(set)
 	for _, lyr := range set.ArtLayers() {
 		fmt.Println(lyr.name)
 	}
@@ -220,7 +222,7 @@ func TestDocumentLayerSet(t *testing.T) {
 
 func TestLoadedDoc(t *testing.T) {
 	var d *Document
-	byt, err := ioutil.ReadFile("Document.txt")
+	byt, err := ioutil.ReadFile("./data/Test.psd.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,12 +241,23 @@ func TestLoadedDoc(t *testing.T) {
 	}
 }
 
+func TestJSLayer(t *testing.T) {
+	d, _ := ActiveDocument()
+	set := d.LayerSet("Group 1")
+	lyr := set.ArtLayer("Layer 1")
+	fmt.Println(JSLayer(set.Path()))
+	fmt.Println(JSLayer(lyr.Path()))
+}
 func TestDoJs_HideLayer(t *testing.T) {
-	err := Open("F:\\GitLab\\dreamkeepers-psd\\Template009.1.psd")
+	err := Open(testDoc)
 	if err != nil {
 		t.Fatal(err)
 	}
-	lyr, err := NewLayerSet("Areas/TitleBackground/", nil)
+	d, err := ActiveDocument()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lyr, err := NewLayerSet("Group 1/", d)
 	lyr.SetVisible(false)
 	if err != nil {
 		t.Fatal(err)
@@ -252,7 +265,7 @@ func TestDoJs_HideLayer(t *testing.T) {
 }
 
 func TestTextItem(t *testing.T) {
-	// err := Open("F:\\GitLab\\dreamkeepers-psd\\Template009.1.psd")
+	// err := Open(testDoc)
 	// if err != nil {
 	// t.Fatal(err)
 	// }
@@ -305,14 +318,14 @@ func BenchmarkHideLayer(b *testing.B) {
 // 59ns
 func BenchmarkHelloWorld_go(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		fmt.Sprintf("Hello, world!")
+		_ = fmt.Sprintf("Hello, world!")
 	}
 }
 
 // ~35200000ns (.0352s)
 func BenchmarkHelloWorld_vbs(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := run("helloworld")
+		_, err := runner.Run("helloworld")
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -322,7 +335,7 @@ func BenchmarkHelloWorld_vbs(b *testing.B) {
 // ~51700000 (0.0517)
 func BenchmarkHelloWorld_js(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := DoJs("test.jsx", "Hello, World!")
+		_, err := DoJS("test.jsx", "Hello, World!")
 		if err != nil {
 			b.Fatal(err)
 		}

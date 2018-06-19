@@ -1,0 +1,9 @@
+# {{ .Name }}
+[![GoDoc](https://godoc.org/github.com/sbrow/{{ .Name }}?status.svg)](https://godoc.org/github.com/sbrow/{{ .Name }}) [![Build Status](https://travis-ci.org/sbrow/{{ .Name }}.svg?branch=master)](https://travis-ci.org/sbrow/{{ .Name }}) [![Coverage Status](https://coveralls.io/repos/github/sbrow/{{ .Name }}/badge.svg?branch=master)](https://coveralls.io/github/sbrow/{{ .Name }}?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/sbrow/{{ .Name }})](https://goreportcard.com/report/github.com/sbrow/{{ .Name }})
+
+{{ .EmitSynopsis }}
+
+## Installation
+```bash
+$ go get -u {{ .ImportPath }}
+```

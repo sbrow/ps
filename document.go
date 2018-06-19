@@ -2,7 +2,6 @@ package ps
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -20,6 +19,8 @@ type Document struct {
 	layerSets []*LayerSet
 }
 
+// DocumentJSON is an exported version of Document that
+// allows Documents to be saved to and loaded from JSON.
 type DocumentJSON struct {
 	Name      string
 	Height    int
@@ -28,11 +29,13 @@ type DocumentJSON struct {
 	LayerSets []*LayerSet
 }
 
+// MarshalJSON returns the Document in JSON format.
 func (d *Document) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&DocumentJSON{Name: d.name, Height: d.height,
 		Width: d.width, ArtLayers: d.artLayers, LayerSets: d.layerSets})
 }
 
+// UnmarshalJSON loads JSON data into this Document.
 func (d *Document) UnmarshalJSON(b []byte) error {
 	tmp := &DocumentJSON{}
 	if err := json.Unmarshal(b, &tmp); err != nil {
@@ -58,15 +61,17 @@ func (d *Document) Name() string {
 	return d.name
 }
 
+// Parent returns the Group that contains d.
 func (d *Document) Parent() Group {
 	return nil
 }
 
-// The height of the document, in pixels.
+// Height returns the height of the document, in pixels.
 func (d *Document) Height() int {
 	return d.height
 }
 
+// ArtLayers returns this document's ArtLayers, if any.
 func (d *Document) ArtLayers() []*ArtLayer {
 	return d.artLayers
 }
@@ -82,7 +87,9 @@ func (d *Document) LayerSet(name string) *LayerSet {
 	for _, set := range d.layerSets {
 		if set.name == name {
 			if Mode != Fast && !set.current {
-				set.Refresh()
+				if err := set.Refresh(); err != nil {
+					log.Panic(err)
+				}
 			}
 			return set
 		}
@@ -90,41 +97,38 @@ func (d *Document) LayerSet(name string) *LayerSet {
 	return nil
 }
 
+// ActiveDocument returns document currently focused in Photoshop.
+//
+// TODO: Reduce cylcomatic complexity
 func ActiveDocument() (*Document, error) {
 	log.Println("Loading ActiveDoucment")
 	d := &Document{}
 
-	byt, err := DoJs("activeDocName.jsx")
+	byt, err := DoJS("activeDocName.jsx")
 	if err != nil {
 		return nil, err
 	}
 	d.name = strings.TrimRight(string(byt), "\r\n")
 	if Mode != Safe {
-		byt, err = ioutil.ReadFile(d.Filename())
-		if err == nil {
-			log.Println("Previous version found, loading")
-			err = json.Unmarshal(byt, &d)
-			if err == nil {
-				return d, err
-			}
-		}
+		err = d.Restore()
+		return d, err
 	}
 	log.Println("Loading manually (This could take awhile)")
-	byt, err = DoJs("getActiveDoc.jsx")
+	byt, err = DoJS("getActiveDoc.jsx")
 	if err != nil {
 		log.Panic(err)
 	}
 	err = json.Unmarshal(byt, &d)
 	if err != nil {
 		d.Dump()
-		fmt.Println(string(byt))
 		log.Panic(err)
 	}
 	for _, lyr := range d.artLayers {
 		lyr.SetParent(d)
 	}
 	for i, set := range d.layerSets {
-		s, err := NewLayerSet(set.Path()+"/", d)
+		var s *LayerSet
+		s, err = NewLayerSet(set.Path()+"/", d)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -135,8 +139,22 @@ func ActiveDocument() (*Document, error) {
 	return d, err
 }
 
+// Restore loads document data from a JSON file.
+func (d *Document) Restore() error {
+	byt, err := ioutil.ReadFile(d.Filename())
+	if err == nil {
+		log.Println("Previous version found, loading")
+		err = json.Unmarshal(byt, &d)
+	}
+	return err
+}
+
+// SetParent does nothing, as the document is a top-level object
+// and therefore can't have a parent group.
+// The function is needed to implement the group interface.
 func (d *Document) SetParent(g Group) {}
 
+// Path returns the root path ("") for all the layers.
 func (d *Document) Path() string {
 	return ""
 }
@@ -151,16 +169,24 @@ func (d *Document) Filename() string {
 		strings.TrimRight(d.name, "\r\n")+".txt")
 }
 
+// Dump saves the document to disk in JSON format.
 func (d *Document) Dump() {
 	log.Println("Dumping to disk")
+	log.Println(d.Filename())
 	f, err := os.Create(d.Filename())
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
+	defer func() {
+		if err = f.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
 	byt, err := json.MarshalIndent(d, "", "\t")
 	if err != nil {
 		log.Fatal(err)
 	}
-	f.Write(byt)
+	if _, err = f.Write(byt); err != nil {
+		log.Println(err)
+	}
 }

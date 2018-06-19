@@ -1,4 +1,3 @@
-// TODO: Count skipped steps.
 package ps
 
 import (
@@ -21,6 +20,7 @@ type Group interface {
 	UnmarshalJSON(b []byte) error
 }
 
+// LayerSet holds a group of Layer objects and a group of LayerSet objects.
 type LayerSet struct {
 	name      string
 	bounds    [2][2]int
@@ -31,6 +31,8 @@ type LayerSet struct {
 	layerSets []*LayerSet
 }
 
+// LayerSetJSON is an exported version of LayerSet, that allows LayerSets to be
+// saved to and loaded from JSON.
 type LayerSetJSON struct {
 	Name      string
 	Bounds    [2][2]int
@@ -39,6 +41,7 @@ type LayerSetJSON struct {
 	LayerSets []*LayerSet
 }
 
+// MarshalJSON returns the LayerSet in JSON form.
 func (l *LayerSet) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&LayerSetJSON{
 		Name:      l.name,
@@ -49,6 +52,7 @@ func (l *LayerSet) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalJSON loads the json data into this LayerSet.
 func (l *LayerSet) UnmarshalJSON(b []byte) error {
 	tmp := &LayerSetJSON{}
 	if err := json.Unmarshal(b, &tmp); err != nil {
@@ -69,15 +73,20 @@ func (l *LayerSet) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (l *LayerSet) Name() string {
+// Name returns the name of the LayerSet
+func (l LayerSet) Name() string {
 	return l.name
 }
 
+// ArtLayers returns the LayerSet's ArtLayers.
 func (l *LayerSet) ArtLayers() []*ArtLayer {
-	if Mode != 2 {
+	if Mode != Fast {
 		for _, lyr := range l.artLayers {
 			if !lyr.current {
-				lyr.Refresh()
+				if err := lyr.Refresh(); err != nil {
+					log.Println(err)
+				}
+				lyr.current = true
 			}
 		}
 	}
@@ -93,9 +102,10 @@ func (l *LayerSet) ArtLayer(name string) *ArtLayer {
 			if Mode == 0 && !lyr.current {
 				err := lyr.Refresh()
 				if err != nil {
-					l.Refresh()
-					err := lyr.Refresh()
-					if err != nil {
+					if err = l.Refresh(); err != nil {
+						log.Panic(err)
+					}
+					if err := lyr.Refresh(); err != nil {
 						log.Panic(err)
 					}
 				}
@@ -103,18 +113,16 @@ func (l *LayerSet) ArtLayer(name string) *ArtLayer {
 			return lyr
 		}
 	}
-	// l.Refresh()
-	// for _, lyr := range l.artLayers {
-	// fmt.Println(lyr)
-	// }
 	lyr := l.ArtLayer(name)
 	fmt.Println(lyr)
 	if lyr == nil {
-		log.Panic(errors.New("Layer not found!"))
+		log.Panic(errors.New("layer not found"))
 	}
 	return lyr
 }
 
+// LayerSets returns the LayerSets contained within
+// this set.
 func (l *LayerSet) LayerSets() []*LayerSet {
 	return l.layerSets
 }
@@ -131,18 +139,21 @@ func (l *LayerSet) LayerSet(name string) *LayerSet {
 }
 
 // Bounds returns the furthest corners of the LayerSet.
-func (l *LayerSet) Bounds() [2][2]int {
+func (l LayerSet) Bounds() [2][2]int {
 	return l.bounds
 }
 
-func (l *LayerSet) SetParent(c Group) {
-	l.parent = c
+// SetParent puts this LayerSet into the given group.
+func (l *LayerSet) SetParent(g Group) {
+	l.parent = g
 }
 
+// Parent returns this layerSet's parent.
 func (l *LayerSet) Parent() Group {
 	return l.parent
 }
 
+// Path returns the layer path to this Set.
 func (l *LayerSet) Path() string {
 	if l.parent == nil {
 		return l.name
@@ -150,29 +161,29 @@ func (l *LayerSet) Path() string {
 	return fmt.Sprintf("%s%s/", l.parent.Path(), l.name)
 }
 
+// NewLayerSet grabs the LayerSet with the given path and returns it.
 func NewLayerSet(path string, g Group) (*LayerSet, error) {
 	path = strings.Replace(path, "//", "/", -1)
-	byt, err := DoJs("getLayerSet.jsx", JSLayer(path))
+	byt, err := DoJS("getLayerSet.jsx", JSLayer(path), JSLayerMerge(path))
+	fmt.Println(JSLayer(path), JSLayerMerge(path))
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
 	var out *LayerSet
 	err = json.Unmarshal(byt, &out)
 	if err != nil {
 		log.Println(JSLayer(path))
 		log.Println(string(byt))
-		log.Panic(err)
+		return nil, err
 	}
 	out.SetParent(g)
 	log.Printf("Loading ActiveDocument/%s\n", out.Path())
-	if err != nil {
-		return &LayerSet{}, err
-	}
 	for _, lyr := range out.artLayers {
 		lyr.SetParent(out)
 	}
 	for i, set := range out.layerSets {
-		s, err := NewLayerSet(fmt.Sprintf("%s%s/", path, set.Name()), out)
+		var s *LayerSet
+		s, err = NewLayerSet(fmt.Sprintf("%s%s/", path, set.Name()), out)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -183,19 +194,23 @@ func NewLayerSet(path string, g Group) (*LayerSet, error) {
 	return out, err
 }
 
-func (l *LayerSet) Visible() bool {
+// Visible returns whether or not the LayerSet is currently visible.
+func (l LayerSet) Visible() bool {
 	return l.visible
 }
 
 // SetVisible makes the LayerSet visible.
-func (l *LayerSet) SetVisible(b bool) {
+func (l *LayerSet) SetVisible(b bool) error {
 	if l.visible == b {
-		return
+		return nil
 	}
 	js := fmt.Sprintf("%s.visible=%v;", strings.TrimRight(
 		JSLayer(l.Path()), ";"), b)
-	DoJs("compilejs.jsx", js)
+	if _, err := DoJS("compilejs.jsx", js); err != nil {
+		return err
+	}
 	l.visible = b
+	return nil
 }
 
 // SetPos snaps the given layerset boundry to the given point.
@@ -204,8 +219,9 @@ func (l *LayerSet) SetPos(x, y int, bound string) {
 	if !l.visible || (x == 0 && y == 0) {
 		return
 	}
-	byt, err := DoJs("LayerSetBounds.jsx", JSLayer(l.Path()),
-		JSLayer(l.Path(), true))
+	path := JSLayer(l.Path())
+	mrgPath := JSLayerMerge(l.Path())
+	byt, err := DoJS("LayerSetBounds.jsx", path, mrgPath)
 	if err != nil {
 		log.Println(string(byt))
 		log.Panic(err)
@@ -234,45 +250,53 @@ func (l *LayerSet) SetPos(x, y int, bound string) {
 	default:
 		lyrX = l.bounds[0][0]
 	}
-	byt, err = DoJs("moveLayer.jsx", JSLayer(l.Path()), fmt.Sprint(x-lyrX),
-		fmt.Sprint(y-lyrY), JSLayer(l.Path(), true))
+	byt, err = DoJS("moveLayer.jsx", JSLayer(l.Path()), fmt.Sprint(x-lyrX),
+		fmt.Sprint(y-lyrY), JSLayerMerge(l.Path()))
 	if err != nil {
 		fmt.Println("byte:", string(byt))
 		panic(err)
 	}
 	var lyr LayerSet
-	err = json.Unmarshal(byt, &lyr)
-	if err != nil {
+	if err = json.Unmarshal(byt, &lyr); err != nil {
 		fmt.Println("byte:", string(byt))
 		log.Panic(err)
 	}
 	l.bounds = lyr.bounds
 }
 
-func (l *LayerSet) Refresh() {
+// Refresh syncs the LayerSet with Photoshop.
+func (l *LayerSet) Refresh() error {
 	var tmp *LayerSet
-	byt, err := DoJs("getLayerSet.jsx", JSLayer(l.Path()), JSLayer(l.Path(), true))
+	byt, err := DoJS("getLayerSet.jsx", JSLayer(l.Path()))
 	if err != nil {
-		panic(err)
+		if err = DoAction("Undo", "DK"); err != nil {
+			return err
+		}
+		if byt, err = DoJS("getLayerSet.jsx", JSLayer(l.Path())); err != nil {
+			return err
+		}
 	}
 	err = json.Unmarshal(byt, &tmp)
 	if err != nil {
 		log.Println("Error in LayerSet.Refresh() \"", string(byt), "\"", "for", l.Path())
-		log.Panic(err)
+		return err
 	}
 	tmp.SetParent(l.Parent())
 	for _, lyr := range l.artLayers {
-		err := lyr.Refresh()
+		err = lyr.Refresh()
 		if err != nil {
 			l.artLayers = tmp.artLayers
 			break
 		}
 	}
 	for _, set := range l.layerSets {
-		set.Refresh()
+		if err = set.Refresh(); err != nil {
+			return err
+		}
 	}
 	l.name = tmp.name
 	l.bounds = tmp.bounds
 	l.visible = tmp.visible
 	l.current = true
+	return nil
 }

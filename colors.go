@@ -2,6 +2,7 @@ package ps
 
 import "encoding/hex"
 
+// Some basic colors.
 var (
 	ColorBlack Color = RGB{0, 0, 0}
 	ColorGray  Color = RGB{128, 128, 128}
@@ -41,15 +42,18 @@ func (r RGB) RGB() [3]int {
 	return [3]int{r.Red, r.Green, r.Blue}
 }
 
+// Hex returns the color coverted to hexidecimal format.
 func (r RGB) Hex() []uint8 {
 	src := []uint8{uint8(r.Red), uint8(r.Green), uint8(r.Blue)}
 	hex := make([]byte, hex.EncodedLen(len(src)))
 	return hex
 }
 
-// Hex is a color in hexadecimal format. It implements the Color interface.
+// Hex is a color in hexadecimal format.
+// It satisfies the Color interface.
 type Hex []uint8
 
+// RGB returns the Hex value converted to RGB
 func (h Hex) RGB() [3]int {
 	src := []byte(h)
 	dst := make([]byte, hex.DecodedLen(len(src)))
@@ -60,6 +64,8 @@ func (h Hex) RGB() [3]int {
 	return [3]int{int(dst[0]), int(dst[1]), int(dst[2])}
 }
 
+// Hex returns the hex value of the number,
+// to satisfy the Color interface.
 func (h Hex) Hex() []uint8 {
 	return h
 }
