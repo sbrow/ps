@@ -4,8 +4,7 @@
 Package ps is a rudimentary API between Adobe Photoshop CS5 and Golang. The
 interaction between the two is implemented using Javascript/VBScript.
 
-Currently only supports Photoshop CS5 Windows x86_64. go:generate godocdown
--output=README.md
+Currently only supports Photoshop CS5 Windows x86_64.
 
 ## Installation
 ```bash

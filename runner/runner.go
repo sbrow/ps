@@ -1,3 +1,9 @@
+//go:generate godocdown -template ../.godocdown.template -output=README.md
+
+// Package runner runs the non-go code that Photoshop understands,
+// and passes it to back to the go program. Currently, this is
+// primarily implemented through Adobe Extendscript, but hopefully
+// in the future it will be upgraded to a C++ plugin.
 package runner
 
 import (

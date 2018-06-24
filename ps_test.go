@@ -54,7 +54,7 @@ func TestClose(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestClose\"")
 	}
-	err := Close(2)
+	err := Close(DoNotSaveChanges)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestQuit(t *testing.T) {
 		t.Skip("Skipping \"TestQuit\"")
 	}
 	Init()
-	err := Quit(2)
+	err := Quit(DoNotSaveChanges)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	if string(msg) != string(out) {
-		fail := fmt.Sprintf("TestRun faild.\ngot:\n\"%s\"\nwant:\n\"%s\"\n", msg, out)
+		fail := fmt.Sprintf("TestRun failed.\ngot:\n\"%s\"\nwant:\n\"%s\"\n", msg, out)
 		t.Fatal(fail)
 	}
 }
