@@ -11,7 +11,7 @@ import (
 
 // ArtLayer reflects some values from an Art Layer in a Photoshop document.
 //
-// TODO: (2) Make TextLayer a subclass of ArtLayer.
+// TODO(sbrow): (2) Make TextLayer a subclass of ArtLayer.
 type ArtLayer struct {
 	name      string    // The layer's name.
 	bounds    [2][2]int // The corners of the layer's bounding box.
@@ -200,9 +200,9 @@ func (a *ArtLayer) Path() string {
 }
 
 // SetVisible makes the layer visible.
-func (a *ArtLayer) SetVisible(b bool) {
+func (a *ArtLayer) SetVisible(b bool) error {
 	if a.visible == b {
-		return
+		return nil
 	}
 	a.visible = b
 	switch b {
@@ -214,8 +214,10 @@ func (a *ArtLayer) SetVisible(b bool) {
 	js := fmt.Sprintf("%s.visible=%v;",
 		strings.TrimRight(JSLayer(a.Path()), ";"), b)
 	if byt, err := DoJS("compilejs.jsx", js); err != nil {
-		log.Println(string(byt), err)
+		log.Println(string(byt))
+		return err
 	}
+	return nil
 }
 
 // Visible returns whether or not the layer is currently hidden.

@@ -2,23 +2,10 @@ package ps
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"strings"
 )
-
-// Group represents a Document or LayerSet.
-type Group interface {
-	Name() string
-	Parent() Group
-	SetParent(Group)
-	Path() string
-	ArtLayers() []*ArtLayer
-	LayerSets() []*LayerSet
-	MarshalJSON() ([]byte, error)
-	UnmarshalJSON(b []byte) error
-}
 
 // LayerSet holds a group of Layer objects and a group of LayerSet objects.
 type LayerSet struct {
@@ -95,7 +82,6 @@ func (l *LayerSet) ArtLayers() []*ArtLayer {
 
 // ArtLayer returns the first top level ArtLayer matching
 // the given name.
-// TODO: Does funky things when passed invalid layername.
 func (l *LayerSet) ArtLayer(name string) *ArtLayer {
 	for _, lyr := range l.artLayers {
 		if lyr.name == name {
@@ -113,12 +99,7 @@ func (l *LayerSet) ArtLayer(name string) *ArtLayer {
 			return lyr
 		}
 	}
-	lyr := l.ArtLayer(name)
-	fmt.Println(lyr)
-	if lyr == nil {
-		log.Panic(errors.New("layer not found"))
-	}
-	return lyr
+	return nil
 }
 
 // LayerSets returns the LayerSets contained within
@@ -136,6 +117,23 @@ func (l *LayerSet) LayerSet(name string) *LayerSet {
 		}
 	}
 	return nil
+}
+
+// MustExist returns a Layer from the set with the given name, and
+// panics if it doesn't exist.
+//
+// If there is a LayerSet and an  ArtLayer with the same name,
+// it will return the LayerSet.
+func (l *LayerSet) MustExist(name string) Layer {
+	set := l.LayerSet(name)
+	if set == nil {
+		lyr := l.ArtLayer(name)
+		if lyr == nil {
+			log.Panicf("no Layer found at \"%s%s\"", l.Path(), name)
+		}
+		return lyr
+	}
+	return set
 }
 
 // Bounds returns the furthest corners of the LayerSet.
@@ -165,7 +163,6 @@ func (l *LayerSet) Path() string {
 func NewLayerSet(path string, g Group) (*LayerSet, error) {
 	path = strings.Replace(path, "//", "/", -1)
 	byt, err := DoJS("getLayerSet.jsx", JSLayer(path), JSLayerMerge(path))
-	fmt.Println(JSLayer(path), JSLayerMerge(path))
 	if err != nil {
 		return nil, err
 	}
@@ -299,4 +296,11 @@ func (l *LayerSet) Refresh() error {
 	l.visible = tmp.visible
 	l.current = true
 	return nil
+}
+
+func (l *LayerSet) Set(ll *LayerSet) {
+	if ll == nil {
+		panic("AHHHHHH")
+	}
+	l = ll
 }

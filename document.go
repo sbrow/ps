@@ -71,6 +71,23 @@ func (d *Document) Height() int {
 	return d.height
 }
 
+// ArtLayer returns the first top level ArtLayer matching
+// the given name.
+func (d *Document) ArtLayer(name string) *ArtLayer {
+	for _, lyr := range d.artLayers {
+		if lyr.name == name {
+			if Mode == 0 && !lyr.current {
+				err := lyr.Refresh()
+				if err != nil {
+					log.Panic(err)
+				}
+			}
+			return lyr
+		}
+	}
+	return nil
+}
+
 // ArtLayers returns this document's ArtLayers, if any.
 func (d *Document) ArtLayers() []*ArtLayer {
 	return d.artLayers
@@ -99,7 +116,7 @@ func (d *Document) LayerSet(name string) *LayerSet {
 
 // ActiveDocument returns document currently focused in Photoshop.
 //
-// TODO: Reduce cylcomatic complexity
+// TODO(sbrow): Reduce cylcomatic complexity
 func ActiveDocument() (*Document, error) {
 	log.Println("Loading ActiveDoucment")
 	d := &Document{}
@@ -111,26 +128,32 @@ func ActiveDocument() (*Document, error) {
 	d.name = strings.TrimRight(string(byt), "\r\n")
 	if Mode != Safe {
 		err = d.Restore()
-		return d, err
+		switch {
+		case os.IsNotExist(err):
+			log.Println("Previous version not found.")
+		case err == nil:
+			return d, err
+		default:
+			return nil, err
+
+		}
 	}
 	log.Println("Loading manually (This could take awhile)")
 	byt, err = DoJS("getActiveDoc.jsx")
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
-	err = json.Unmarshal(byt, &d)
-	if err != nil {
+	if err = json.Unmarshal(byt, &d); err != nil {
 		d.Dump()
-		log.Panic(err)
+		return nil, err
 	}
 	for _, lyr := range d.artLayers {
 		lyr.SetParent(d)
 	}
 	for i, set := range d.layerSets {
 		var s *LayerSet
-		s, err = NewLayerSet(set.Path()+"/", d)
-		if err != nil {
-			log.Fatal(err)
+		if s, err = NewLayerSet(set.Path()+"/", d); err != nil {
+			return nil, err
 		}
 		d.layerSets[i] = s
 		s.SetParent(d)
@@ -189,4 +212,21 @@ func (d *Document) Dump() {
 	if _, err = f.Write(byt); err != nil {
 		log.Println(err)
 	}
+}
+
+// MustExist returns a Layer from the set with the given name, and
+// panics if it doesn't exist.
+//
+// If there is a LayerSet and an  ArtLayer with the same name,
+// it will return the LayerSet.
+func (d *Document) MustExist(name string) Layer {
+	set := d.LayerSet(name)
+	if set == nil {
+		lyr := d.ArtLayer(name)
+		if lyr == nil {
+			log.Panicf("no Layer found at \"%s%s\"", d.Path(), name)
+		}
+		return lyr
+	}
+	return set
 }

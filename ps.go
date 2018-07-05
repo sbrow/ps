@@ -1,7 +1,9 @@
-//go:generate godocdown -output=README.md
+//go:generate sh -c "godoc2md -template ./.doc.template github.com/sbrow/ps > README.md"
 
 // Package ps is a rudimentary API between Adobe Photoshop CS5 and Golang.
 // The interaction between the two is implemented using Javascript/VBScript.
+//
+// Use it to control Photoshop, edit documents, and perform batch operations.
 //
 // Currently only supports Photoshop CS5 Windows x86_64.
 package ps
@@ -38,7 +40,7 @@ func ApplyDataset(name string) error {
 }
 
 // Close closes the active document in Photoshop, using the given save option.
-// TODO: Move to Document
+// TODO(sbrow): Move to Document
 func Close(save SaveOption) error {
 	_, err := runner.Run("close", fmt.Sprint(save))
 	return err
@@ -104,7 +106,7 @@ func Init() error {
 // The output always ends with a semicolon, so if you want to access a specific
 // property of the layer, you'll have to trim the output before concatenating.
 //
-// TODO: get rid of the semicolon.
+// TODO(sbrow): get rid of the semicolon.
 func JSLayer(path string) string {
 	pth := strings.Split(path, "/")
 	js := "app.activeDocument"
@@ -138,7 +140,7 @@ func Open(path string) error {
 	return err
 }
 
-// Quit exits Photoshop, closing all open docuemnts using the given save option.
+// Quit exits Photoshop, closing all open documents using the given save option.
 func Quit(save SaveOption) error {
 	_, err := runner.Run("quit", fmt.Sprint(save))
 	return err

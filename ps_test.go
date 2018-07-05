@@ -1,19 +1,14 @@
-// TODO: Update package tests.
+// TODO(sbrow): Update package tests.
 package ps
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
-	"path/filepath"
-	"regexp"
 	"testing"
 
 	"github.com/sbrow/ps/runner"
 )
 
+/*
 var testDoc string
 
 func init() {
@@ -34,7 +29,9 @@ func TestInit(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestStart\"")
 	}
-	Quit(2)
+	if err := Quit(2); err != nil {
+		log.Println("error:", err)
+	}
 	if err := Init(); err != nil {
 		t.Error(err)
 	}
@@ -43,6 +40,9 @@ func TestInit(t *testing.T) {
 func TestOpen(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestOpen\"")
+	}
+	if err := Init(); err != nil {
+		t.Fatal(err)
 	}
 	if err := Open(testDoc); err != nil {
 		log.Println(testDoc)
@@ -54,8 +54,12 @@ func TestClose(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping \"TestClose\"")
 	}
-	err := Close(DoNotSaveChanges)
-	if err != nil {
+	var err error
+	if err = Open(testDoc); err != nil {
+		log.Println(testDoc)
+		t.Fatal(err)
+	}
+	if err = Close(DoNotSaveChanges); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -139,6 +143,9 @@ func TestLayerSet(t *testing.T) {
 	}
 }
 func TestMove(t *testing.T) {
+	if err := Open(testDoc); err != nil {
+		t.Fatal(err)
+	}
 	d, err := ActiveDocument()
 	if err != nil {
 		t.Fatal(err)
@@ -282,19 +289,18 @@ func TestTextItem(t *testing.T) {
 		}
 	}
 
-	/*	byt := []byte(`{"Name": "lyr", "TextItem": {"Contents": "lyr", "Size": 12.000, "Font": "ArialItalic"}}`)
-		lyr := &ArtLayer{}
-		// byt := []byte(`{"Name": "lyr"}`)
-		// lyr := &TextItem{}
-		err := lyr.UnmarshalJSON(byt)
-		fmt.Printf("%+v\n", lyr)
-		fmt.Println(lyr.TextItem)
-		if err != nil {
-			t.Fatal(err)
-		}
-	*/
+	byt := []byte(`{"Name": "lyr", "TextItem": {"Contents": "lyr", "Size": 12.000, "Font": "ArialItalic"}}`)
+	lyr := &ArtLayer{}
+	// byt := []byte(`{"Name": "lyr"}`)
+	// lyr := &TextItem{}
+	err := lyr.UnmarshalJSON(byt)
+	fmt.Printf("%+v\n", lyr)
+	fmt.Println(lyr.TextItem)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
-
+*/
 func BenchmarkDoc_Go(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := ActiveDocument()
