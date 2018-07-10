@@ -116,7 +116,7 @@ func (d *Document) LayerSet(name string) *LayerSet {
 
 // ActiveDocument returns document currently focused in Photoshop.
 //
-// TODO(sbrow): Reduce cylcomatic complexity
+// TODO(sbrow): Reduce cylcomatic complexity of ActiveDocument().
 func ActiveDocument() (*Document, error) {
 	log.Println("Loading ActiveDoucment")
 	d := &Document{}

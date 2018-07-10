@@ -38,13 +38,11 @@ $ go get -u github.com/sbrow/ps
 
 `sbrow:` (2) Make TextLayer a subclass of ArtLayer.
 
-`sbrow:` Reduce cylcomatic complexity
+`sbrow:` Reduce cylcomatic complexity of ActiveDocument().
 
-`sbrow:` Does funky things when passed invalid layername.
+`sbrow:` refactor Close to Document.Close
 
-`sbrow:` Move to Document
-
-`sbrow:` get rid of the semicolon.
+`sbrow:` get rid of the semicolon at the end of JSLayer.
 
 ## <a name="pkg-doc">Documentation</a>
 For full Documentation please visit https://godoc.org/github.com/sbrow/ps

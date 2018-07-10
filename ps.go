@@ -40,7 +40,7 @@ func ApplyDataset(name string) error {
 }
 
 // Close closes the active document in Photoshop, using the given save option.
-// TODO(sbrow): Move to Document
+// TODO(sbrow): refactor Close to Document.Close
 func Close(save SaveOption) error {
 	_, err := runner.Run("close", fmt.Sprint(save))
 	return err
@@ -106,7 +106,7 @@ func Init() error {
 // The output always ends with a semicolon, so if you want to access a specific
 // property of the layer, you'll have to trim the output before concatenating.
 //
-// TODO(sbrow): get rid of the semicolon.
+// TODO(sbrow): get rid of the semicolon at the end of JSLayer.
 func JSLayer(path string) string {
 	pth := strings.Split(path, "/")
 	js := "app.activeDocument"
