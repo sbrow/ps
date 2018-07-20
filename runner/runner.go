@@ -8,7 +8,6 @@ package runner
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -52,7 +51,7 @@ func Run(name string, args ...string) ([]byte, error) {
 	cmd := exec.Command(std.Cmd, parseArgs(name, args...)...)
 	cmd.Stdout, cmd.Stderr = &out, &errs
 	if err := cmd.Run(); err != nil || len(errs.Bytes()) != 0 {
-		return out.Bytes(), errors.New(errs.String())
+		return out.Bytes(), fmt.Errorf("err: \"%s\"\nargs: \"%s\"\nout: \"%s\"", errs.String(), args, out.String())
 	}
 	return out.Bytes(), nil
 }
