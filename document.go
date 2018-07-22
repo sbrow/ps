@@ -56,7 +56,7 @@ func (d *Document) UnmarshalJSON(b []byte) error {
 }
 
 // Name returns the document's title.
-// This fufills the Group interface.
+// This fulfills the Group interface.
 func (d *Document) Name() string {
 	return d.name
 }
@@ -116,7 +116,7 @@ func (d *Document) LayerSet(name string) *LayerSet {
 
 // ActiveDocument returns document currently focused in Photoshop.
 //
-// TODO(sbrow): Reduce cylcomatic complexity of ActiveDocument().
+// TODO(sbrow): Reduce cyclomatic complexity of ActiveDocument().
 func ActiveDocument() (*Document, error) {
 	log.Println("Loading ActiveDoucment")
 	d := &Document{}
@@ -127,7 +127,7 @@ func ActiveDocument() (*Document, error) {
 	}
 	d.name = strings.TrimRight(string(byt), "\r\n")
 	if Mode != Safe {
-		err = d.Restore()
+		err = d.Restore(d.Filename())
 		switch {
 		case os.IsNotExist(err):
 			log.Println("Previous version not found.")
@@ -163,8 +163,11 @@ func ActiveDocument() (*Document, error) {
 }
 
 // Restore loads document data from a JSON file.
-func (d *Document) Restore() error {
-	byt, err := ioutil.ReadFile(d.Filename())
+func (d *Document) Restore(path string) error {
+	if path == "" {
+		path = d.Filename()
+	}
+	byt, err := ioutil.ReadFile(path)
 	if err == nil {
 		log.Println("Previous version found, loading")
 		err = json.Unmarshal(byt, &d)
@@ -188,8 +191,13 @@ func (d *Document) Filename() string {
 	if !ok {
 		log.Panic("No caller information")
 	}
-	return filepath.Join(filepath.Dir(dir), "data",
-		strings.TrimRight(d.name, "\r\n")+".txt")
+	err := os.Mkdir(filepath.Join(filepath.Dir(dir), "data"), 0700)
+	if err != nil {
+		log.Println(err)
+	}
+	name := strings.TrimRight(d.name, "\r\n")
+	name = strings.TrimSuffix(name, ".psd")
+	return filepath.Join(filepath.Dir(dir), "data", name+".json")
 }
 
 // Dump saves the document to disk in JSON format.

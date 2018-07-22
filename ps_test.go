@@ -160,7 +160,7 @@ func TestActiveDocument(t *testing.T) {
 	}
 	Open(testDoc)
 	d, err := ActiveDocument()
-	defer d.Dump()
+	defer func(){d.Dump()}()
 	if err != nil {
 		t.Fatal(err)
 	}
