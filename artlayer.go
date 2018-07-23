@@ -18,8 +18,8 @@ type ArtLayer struct {
 	parent    Group     // The LayerSet/Document this layer is in.
 	visible   bool      // Whether or not the layer is visible.
 	current   bool      // Whether we've checked this layer since we loaded from disk.
-	Color               // The layer's color overlay effect (if any).
-	*Stroke             // The layer's stroke effect (if any).
+	Color     Color     // The layer's color overlay effect (if any).
+	Stroke    *Stroke   // The layer's stroke effect (if any).
 	*TextItem           // The layer's text, if it's a text layer.
 }
 
@@ -225,7 +225,7 @@ func (a *ArtLayer) Visible() bool {
 	return a.visible
 }
 
-// SetPos snaps the given layer boundry to the given point.
+// SetPos snaps the given layer boundary to the given point.
 // Valid options for bound are: "TL", "TR", "BL", "BR"
 func (a *ArtLayer) SetPos(x, y int, bound string) {
 	if !a.visible || (x == 0 && y == 0) {
