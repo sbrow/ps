@@ -1,4 +1,5 @@
-# ps
+![logo](logo.png)
+
 [![GoDoc](https://godoc.org/github.com/sbrow/ps?status.svg)](https://godoc.org/github.com/sbrow/ps) [![Build Status](https://travis-ci.org/sbrow/ps.svg?branch=master)](https://travis-ci.org/sbrow/ps) [![Coverage Status](https://coveralls.io/repos/github/sbrow/ps/badge.svg?branch=master)](https://coveralls.io/github/sbrow/ps?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/sbrow/ps)](https://goreportcard.com/report/github.com/sbrow/ps)
 
 `import "github.com/sbrow/ps"`
