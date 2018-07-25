@@ -1,10 +1,10 @@
-//go:generate sh -c "godoc2md -template ../.doc.template github.com/sbrow/ps/runner > README.md"
+//go:generate sh -c "godoc2md -template ../.doc.template github.com/sbrow/ps/v2/runner > README.md"
 
 // Package runner runs the non-go code that Photoshop understands,
 // and passes it to back to the go program. Currently, this is
 // primarily implemented through Adobe Extendscript, but hopefully
 // in the future it will be upgraded to a C++ plugin.
-package runner
+package runner // import "github.com/sbrow/ps/v2/runner"
 
 import (
 	"bytes"

@@ -1,5 +1,3 @@
-//go:generate sh -c "godoc2md -template ./.doc.template github.com/sbrow/ps > README.md"
-
 package ps
 
 import (

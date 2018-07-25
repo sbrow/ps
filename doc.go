@@ -1,3 +1,5 @@
+//go:generate sh -c "godoc2md -template ./.doc.template github.com/sbrow/ps/v2 > README.md"
+
 // Package ps is a rudimentary API between Adobe Photoshop CS5 and Golang.
 // The interaction between the two is implemented using Javascript/VBScript.
 //
