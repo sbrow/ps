@@ -201,8 +201,7 @@ func (l *LayerSet) SetVisible(b bool) error {
 	if l.visible == b {
 		return nil
 	}
-	js := fmt.Sprintf("%s.visible=%v;", strings.TrimRight(
-		JSLayer(l.Path()), ";"), b)
+	js := fmt.Sprintf("%s.visible=%v;", JSLayer(l.Path()), b)
 	if _, err := DoJS("compilejs.jsx", js); err != nil {
 		return err
 	}
@@ -210,7 +209,7 @@ func (l *LayerSet) SetVisible(b bool) error {
 	return nil
 }
 
-// SetPos snaps the given layerset boundry to the given point.
+// SetPos snaps the given layerset boundary to the given point.
 // Valid options for bound are: "TL", "TR", "BL", "BR"
 func (l *LayerSet) SetPos(x, y int, bound string) {
 	if !l.visible || (x == 0 && y == 0) {
@@ -296,11 +295,4 @@ func (l *LayerSet) Refresh() error {
 	l.visible = tmp.visible
 	l.current = true
 	return nil
-}
-
-func (l *LayerSet) Set(ll *LayerSet) {
-	if ll == nil {
-		panic("AHHHHHH")
-	}
-	l = ll
 }

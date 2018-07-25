@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/sbrow/ps/runner"
+	"github.com/sbrow/ps/v2/runner"
 )
 
 /*

@@ -1,5 +1,5 @@
 ![logo](logo.png)
-
+# ps
 [![GoDoc](https://godoc.org/github.com/sbrow/ps?status.svg)](https://godoc.org/github.com/sbrow/ps) [![Build Status](https://travis-ci.org/sbrow/ps.svg?branch=master)](https://travis-ci.org/sbrow/ps) [![Coverage Status](https://coveralls.io/repos/github/sbrow/ps/badge.svg?branch=master)](https://coveralls.io/github/sbrow/ps?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/sbrow/ps)](https://goreportcard.com/report/github.com/sbrow/ps)
 
 `import "github.com/sbrow/ps"`
@@ -39,11 +39,9 @@ $ go get -u github.com/sbrow/ps
 
 `sbrow:` (2) Make TextLayer a subclass of ArtLayer.
 
-`sbrow:` Reduce cylcomatic complexity of ActiveDocument().
+`sbrow:` Reduce cyclomatic complexity of ActiveDocument().
 
 `sbrow:` refactor Close to Document.Close
-
-`sbrow:` get rid of the semicolon at the end of JSLayer.
 
 ## <a name="pkg-doc">Documentation</a>
 For full Documentation please visit https://godoc.org/github.com/sbrow/ps

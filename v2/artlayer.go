@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 
-	"github.com/sbrow/ps/runner"
+	"github.com/sbrow/ps/v2/runner"
 )
 
 // ArtLayer reflects some values from an Art Layer in a Photoshop document.
@@ -211,8 +210,7 @@ func (a *ArtLayer) SetVisible(b bool) error {
 	case false:
 		log.Printf("Hiding %s", a.name)
 	}
-	js := fmt.Sprintf("%s.visible=%v;",
-		strings.TrimRight(JSLayer(a.Path()), ";"), b)
+	js := fmt.Sprintf("%s.visible=%v;", JSLayer(a.Path()), b)
 	if byt, err := DoJS("compilejs.jsx", js); err != nil {
 		log.Println(string(byt))
 		return err
