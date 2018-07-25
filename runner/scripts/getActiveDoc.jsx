@@ -1,7 +1,7 @@
 ﻿#include lib.js
 var stdout = newFile(arguments[0]);
 var doc = app.activeDocument;
-stdout.writeln(('{"Name": "'+doc.name+'", "Height":'+doc.height+
+stdout.writeln(('{"Name": "'+doc.name+'", "FullName": "'+doc.fullName+'", "Height":'+doc.height+
     ', "Width":'+doc.width+', "ArtLayers": [').replace(/ px/g, ""));
 
 stdout.writeln(layers(doc.artLayers))

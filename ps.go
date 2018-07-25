@@ -16,11 +16,11 @@ import (
 )
 
 // The full path to this directory.
-var pkgpath string
+var pkgPath string
 
 func init() {
 	_, file, _, _ := runtime.Caller(0)
-	pkgpath = filepath.Dir(file)
+	pkgPath = filepath.Dir(file)
 }
 
 // ApplyDataset fills out a template file with information
@@ -40,9 +40,9 @@ func Close(save SaveOption) error {
 	return err
 }
 
-// DoAction runs the Photoshop Action with the given name from the Action Set "from".
-func DoAction(action, from string) error {
-	_, err := runner.Run("action", action, from)
+// DoAction runs the Photoshop Action with name 'action' from ActionSet 'set'.
+func DoAction(set, action string) error {
+	_, err := runner.Run("action", set, action)
 	return err
 }
 
@@ -72,8 +72,10 @@ func DoJS(path string, args ...string) ([]byte, error) {
 	args = append([]string{outpath.Name()}, args...)
 
 	// If passed a script by name, assume it's in the default folder.
-	if filepath.Dir(path) == "." {
-		path = filepath.Join(pkgpath, "runner", "scripts", path)
+	scripts := filepath.Join(pkgPath, "runner", "scripts")
+	b, err := filepath.Match(scripts, path)
+	if !b || err != nil {
+		path = filepath.Join(scripts, path)
 	}
 
 	args = append([]string{path}, args...)
@@ -99,8 +101,6 @@ func Init() error {
 // JSLayer "compiles" Javascript code to get an ArtLayer with the given path.
 // The output always ends with a semicolon, so if you want to access a specific
 // property of the layer, you'll have to trim the output before concatenating.
-//
-// TODO(sbrow): get rid of the semicolon at the end of JSLayer.
 func JSLayer(path string) string {
 	pth := strings.Split(path, "/")
 	js := "app.activeDocument"
@@ -113,7 +113,7 @@ func JSLayer(path string) string {
 	if pth[last] != "" {
 		js += fmt.Sprintf(".artLayers.getByName('%s')", pth[last])
 	}
-	return js + ";"
+	return js
 }
 
 // JSLayerMerge gets the Javascript code to get the Layer or LayerSet with this path
@@ -129,9 +129,11 @@ func JSLayerMerge(path string) string {
 // Open opens a Photoshop document with the specified path.
 // If Photoshop is not currently running, it is started before
 // opening the document.
-func Open(path string) error {
-	_, err := runner.Run("open", path)
-	return err
+func Open(path string) (*Document, error) {
+	if _, err := runner.Run("open", path); err != nil {
+		return nil, err
+	}
+	return ActiveDocument()
 }
 
 // Quit exits Photoshop, closing all open documents using the given save option.

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/sbrow/ps/runner"
 )
@@ -211,8 +210,7 @@ func (a *ArtLayer) SetVisible(b bool) error {
 	case false:
 		log.Printf("Hiding %s", a.name)
 	}
-	js := fmt.Sprintf("%s.visible=%v;",
-		strings.TrimRight(JSLayer(a.Path()), ";"), b)
+	js := fmt.Sprintf("%s.visible=%v;", JSLayer(a.Path()), b)
 	if byt, err := DoJS("compilejs.jsx", js); err != nil {
 		log.Println(string(byt))
 		return err

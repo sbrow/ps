@@ -1,5 +1,6 @@
+' Runs an action with the given name (Argument 1) from the given set (Argument 0).
 set appRef = CreateObject("Photoshop.Application")
-' No dialogs'
+' No dialogs.
 dlgMode = 3
 
 set desc = CreateObject( "Photoshop.ActionDescriptor" )

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 )
 
 // TextItem holds the text element of a TextLayer.
@@ -62,7 +61,7 @@ func (t *TextItem) SetText(txt string) {
 		return
 	}
 	var err error
-	lyr := strings.TrimRight(JSLayer(t.parent.Path()), ";")
+	lyr := JSLayer(t.parent.Path())
 	bndtext := "[[' + lyr.bounds[0] + ',' + lyr.bounds[1] + '],[' + lyr.bounds[2] + ',' + lyr.bounds[3] + ']]"
 	js := fmt.Sprintf(`%s.textItem.contents='%s';var lyr = %[1]s;stdout.writeln(('%[3]s').replace(/ px/g, ''));`,
 		lyr, txt, bndtext)
@@ -87,7 +86,7 @@ func (t *TextItem) SetSize(s float64) {
 	if t.size == s {
 		return
 	}
-	lyr := strings.TrimRight(JSLayer(t.parent.Path()), ";")
+	lyr := JSLayer(t.parent.Path())
 	js := fmt.Sprintf("%s.textItem.size=%f;", lyr, s)
 	_, err := DoJS("compilejs.jsx", js)
 	if err != nil {

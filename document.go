@@ -2,17 +2,19 @@ package ps
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
 // Document represents a Photoshop document (PSD file).
 type Document struct {
 	name      string
+	fullName  string
 	height    int
 	width     int
 	artLayers []*ArtLayer
@@ -23,6 +25,7 @@ type Document struct {
 // allows Documents to be saved to and loaded from JSON.
 type DocumentJSON struct {
 	Name      string
+	FullName  string
 	Height    int
 	Width     int
 	ArtLayers []*ArtLayer
@@ -31,7 +34,7 @@ type DocumentJSON struct {
 
 // MarshalJSON returns the Document in JSON format.
 func (d *Document) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&DocumentJSON{Name: d.name, Height: d.height,
+	return json.Marshal(&DocumentJSON{Name: d.name, FullName: d.fullName, Height: d.height,
 		Width: d.width, ArtLayers: d.artLayers, LayerSets: d.layerSets})
 }
 
@@ -42,6 +45,7 @@ func (d *Document) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	d.name = tmp.Name
+	d.fullName = tmp.FullName
 	d.height = tmp.Height
 	d.width = tmp.Width
 	d.artLayers = tmp.ArtLayers
@@ -59,6 +63,11 @@ func (d *Document) UnmarshalJSON(b []byte) error {
 // This fulfills the Group interface.
 func (d *Document) Name() string {
 	return d.name
+}
+
+// FullName returns the absolute path to the current document file.
+func (d *Document) FullName() string {
+	return d.fullName
 }
 
 // Parent returns the Group that contains d.
@@ -127,7 +136,7 @@ func ActiveDocument() (*Document, error) {
 	}
 	d.name = strings.TrimRight(string(byt), "\r\n")
 	if Mode != Safe {
-		err = d.Restore(d.Filename())
+		err = d.Restore(d.DumpFile())
 		switch {
 		case os.IsNotExist(err):
 			log.Println("Previous version not found.")
@@ -165,7 +174,7 @@ func ActiveDocument() (*Document, error) {
 // Restore loads document data from a JSON file.
 func (d *Document) Restore(path string) error {
 	if path == "" {
-		path = d.Filename()
+		path = d.DumpFile()
 	}
 	byt, err := ioutil.ReadFile(path)
 	if err == nil {
@@ -185,26 +194,23 @@ func (d *Document) Path() string {
 	return ""
 }
 
-// Filename returns the path to the json file for this document.
-func (d *Document) Filename() string {
-	_, dir, _, ok := runtime.Caller(0)
-	if !ok {
-		log.Panic("No caller information")
-	}
-	err := os.Mkdir(filepath.Join(filepath.Dir(dir), "data"), 0700)
+// DumpFile returns the path to the json file where
+// this document's data gets dumped. See Document.Dump
+func (d *Document) DumpFile() string {
+	usr, err := user.Current()
 	if err != nil {
 		log.Println(err)
 	}
-	name := strings.TrimRight(d.name, "\r\n")
-	name = strings.TrimSuffix(name, ".psd")
-	return filepath.Join(filepath.Dir(dir), "data", name+".json")
+	path := filepath.Join(strings.Replace(d.fullName, "~", usr.HomeDir, 1))
+	return strings.Replace(path, ".psd", ".json", 1)
 }
 
 // Dump saves the document to disk in JSON format.
 func (d *Document) Dump() {
 	log.Println("Dumping to disk")
-	log.Println(d.Filename())
-	f, err := os.Create(d.Filename())
+	log.Println(d.DumpFile())
+	defer d.Save()
+	f, err := os.Create(d.DumpFile())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -237,4 +243,13 @@ func (d *Document) MustExist(name string) Layer {
 		return lyr
 	}
 	return set
+}
+
+// Save saves the Document in place.
+func (d *Document) Save() error {
+	js := fmt.Sprintf("var d=app.open(File('%s'));\nd.save();", d.FullName())
+	if _, err := DoJS("compilejs", js); err != nil {
+		return err
+	}
+	return nil
 }
