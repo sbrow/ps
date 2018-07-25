@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sbrow/ps/runner"
+	"github.com/sbrow/ps/v2/runner"
 )
 
 // The full path to this directory.

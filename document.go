@@ -127,7 +127,7 @@ func (d *Document) LayerSet(name string) *LayerSet {
 //
 // TODO(sbrow): Reduce cyclomatic complexity of ActiveDocument().
 func ActiveDocument() (*Document, error) {
-	log.Println("Loading ActiveDoucment")
+	log.Println("Loading ActiveDocument")
 	d := &Document{}
 
 	byt, err := DoJS("activeDocName.jsx")
@@ -248,8 +248,6 @@ func (d *Document) MustExist(name string) Layer {
 // Save saves the Document in place.
 func (d *Document) Save() error {
 	js := fmt.Sprintf("var d=app.open(File('%s'));\nd.save();", d.FullName())
-	if _, err := DoJS("compilejs", js); err != nil {
-		return err
-	}
-	return nil
+	_, err := DoJS("compilejs", js)
+	return err
 }

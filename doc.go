@@ -4,4 +4,5 @@
 // Use it to control Photoshop, edit documents, and perform batch operations.
 //
 // Currently only supports Photoshop CS5 Windows x86_64.
-package ps
+//
+package ps // import "github.com/sbrow/ps/v2"

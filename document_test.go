@@ -82,10 +82,10 @@ func TestDocument_Save(t *testing.T) {
 	}
 
 	defer func() {
-		if err := DoAction("DK", "Undo"); err != nil {
+		if err = DoAction("DK", "Undo"); err != nil {
 			t.Error(err)
 		}
-		err := d.Save()
+		err = d.Save()
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/sbrow/ps/runner"
+	"github.com/sbrow/ps/v2/runner"
 )
 
 // ArtLayer reflects some values from an Art Layer in a Photoshop document.
