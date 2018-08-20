@@ -1,0 +1,79 @@
+{
+	"Name": "Test.psd",
+	"FullName": "~/go/src/github.com/sbrow/ps/v2/Test.psd",
+	"Height": 600,
+	"Width": 900,
+	"ArtLayers": [
+		{
+			"Name": "Background",
+			"Bounds": [
+				[
+					0,
+					0
+				],
+				[
+					900,
+					600
+				]
+			],
+			"Color": [
+				0,
+				0,
+				0
+			],
+			"Stroke": [
+				0,
+				0,
+				0
+			],
+			"StrokeAmt": 0,
+			"Visible": true,
+			"TextItem": null
+		}
+	],
+	"LayerSets": [
+		{
+			"Name": "Group 1",
+			"Bounds": [
+				[
+					0,
+					0
+				],
+				[
+					0,
+					0
+				]
+			],
+			"Visible": true,
+			"ArtLayers": [
+				{
+					"Name": "Layer 1",
+					"Bounds": [
+						[
+							222,
+							290
+						],
+						[
+							472,
+							454
+						]
+					],
+					"Color": [
+						0,
+						0,
+						0
+					],
+					"Stroke": [
+						0,
+						0,
+						0
+					],
+					"StrokeAmt": 0,
+					"Visible": true,
+					"TextItem": null
+				}
+			],
+			"LayerSets": []
+		}
+	]
+}

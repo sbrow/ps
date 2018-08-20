@@ -130,16 +130,16 @@ func ActiveDocument() (*Document, error) {
 	log.Println("Loading ActiveDocument")
 	d := &Document{}
 
-	byt, err := DoJS("activeDocName.jsx")
+	byt, err := DoJS("activeDocFullName.jsx")
 	if err != nil {
 		return nil, err
 	}
-	d.name = strings.TrimRight(string(byt), "\r\n")
+	d.fullName = strings.TrimRight(string(byt), "\r\n")
 	if Mode != Safe {
 		err = d.Restore(d.DumpFile())
 		switch {
 		case os.IsNotExist(err):
-			log.Println("Previous version not found.")
+			log.Printf("Previous version not found: \"%s\"\n", d.DumpFile())
 		case err == nil:
 			return d, err
 		default:
@@ -202,6 +202,10 @@ func (d *Document) DumpFile() string {
 		log.Println(err)
 	}
 	path := filepath.Join(strings.Replace(d.fullName, "~", usr.HomeDir, 1))
+	path = strings.TrimPrefix(path, `\`)
+	path = strings.Replace(path, `[^:]\`, `:\`, 1)
+	drive := filepath.VolumeName(path)
+	path = strings.Replace(path, drive, strings.ToUpper(drive), 1)
 	return strings.Replace(path, ".psd", ".json", 1)
 }
 

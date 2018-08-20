@@ -141,6 +141,7 @@ func Quit(save SaveOption) error {
 }
 
 // SaveAs saves the Photoshop document to the given location.
+// // TODO(sbrow): doesn't return error on non-existant path.
 func SaveAs(path string) error {
 	_, err := runner.Run("save", path)
 	return err
