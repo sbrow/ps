@@ -202,17 +202,16 @@ func (d *Document) DumpFile() string {
 		log.Println(err)
 	}
 	path := filepath.Join(strings.Replace(d.fullName, "~", usr.HomeDir, 1))
+	path = strings.Replace(path, `/`, `\`, -1)
 	path = strings.TrimPrefix(path, `\`)
-	path = strings.Replace(path, `[^:]\`, `:\`, 1)
-	drive := filepath.VolumeName(path)
-	path = strings.Replace(path, drive, strings.ToUpper(drive), 1)
+	path = strings.Replace(path, `\`, `:\`, 1)
 	return strings.Replace(path, ".psd", ".json", 1)
 }
 
 // Dump saves the document to disk in JSON format.
 func (d *Document) Dump() {
 	log.Println("Dumping to disk")
-	log.Println(d.DumpFile())
+	log.Println(d.DumpFile(), d.FullName())
 	defer d.Save()
 	f, err := os.Create(d.DumpFile())
 	if err != nil {

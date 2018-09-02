@@ -17,6 +17,7 @@ import (
 
 // Windows is the runner Windows Operating Systems.
 // It runs Visual Basic Scripts.
+// // TODO(sbrow): Separate 32 and 64 bit Windows runners.
 var Windows = Runner{
 	Cmd:  "cscript.exe",
 	Args: []string{"/nologo"},
