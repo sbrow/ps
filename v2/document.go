@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -204,7 +205,8 @@ func (d *Document) DumpFile() string {
 	path := filepath.Join(strings.Replace(d.fullName, "~", usr.HomeDir, 1))
 	path = strings.Replace(path, `/`, `\`, -1)
 	path = strings.TrimPrefix(path, `\`)
-	path = strings.Replace(path, `\`, `:\`, 1)
+	reg := regexp.MustCompile(`(^)([a-zA-z])(:?\\)`)
+	path = reg.ReplaceAllString(path, `$2:\`)
 	return strings.Replace(path, ".psd", ".json", 1)
 }
 
