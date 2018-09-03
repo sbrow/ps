@@ -181,10 +181,8 @@ func (d *Document) Restore(path string) error {
 		log.Println("Previous version found, loading")
 		err = json.Unmarshal(byt, &d)
 		if err == nil {
-			byt, err := DoJS("activeDocFullName.jsx")
-			if err != nil {
-				return nil, err
-			}
+			var byt []byte
+			byt, err = DoJS("activeDocFullName.jsx")
 			d.fullName = strings.TrimRight(string(byt), "\r\n")
 		}
 	}
