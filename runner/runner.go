@@ -1,4 +1,4 @@
-//go:generate sh -c "godoc2md -template ../.doc.template github.com/sbrow/ps/runner > README.md"
+//go:generate sh -c "godoc2md -template ../.doc.template github.com/sbrow/ps/v2/runner > README.md"
 
 // Package runner runs the non-go code that Photoshop understands,
 // and passes it to back to the go program. Currently, this is
@@ -17,6 +17,7 @@ import (
 
 // Windows is the runner Windows Operating Systems.
 // It runs Visual Basic Scripts.
+// // TODO(sbrow): Separate 32 and 64 bit Windows runners.
 var Windows = Runner{
 	Cmd:  "cscript.exe",
 	Args: []string{"/nologo"},

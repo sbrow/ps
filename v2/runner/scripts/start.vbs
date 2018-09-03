@@ -1,1 +1,0 @@
-set app = CreateObject("Photoshop.Application")

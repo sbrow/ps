@@ -1,1 +1,1 @@
-module github.com/sbrow/ps
+module github.com/sbrow/ps/v2

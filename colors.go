@@ -22,9 +22,9 @@ type Color interface {
 func Compare(a, b Color) Color {
 	A := a.RGB()
 	B := b.RGB()
-	Aavg := (A[0] + A[1] + A[2]) / 3
-	Bavg := (B[0] + B[1] + B[2]) / 3
-	if Aavg > Bavg {
+	avgA := (A[0] + A[1] + A[2]) / 3
+	avgB := (B[0] + B[1] + B[2]) / 3
+	if avgA > avgB {
 		return a
 	}
 	return b
@@ -42,7 +42,7 @@ func (r RGB) RGB() [3]int {
 	return [3]int{r.Red, r.Green, r.Blue}
 }
 
-// Hex returns the color coverted to hexidecimal format.
+// Hex returns the color converted to hexadecimal format.
 func (r RGB) Hex() []uint8 {
 	src := []uint8{uint8(r.Red), uint8(r.Green), uint8(r.Blue)}
 	hex := make([]byte, hex.EncodedLen(len(src)))

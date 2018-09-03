@@ -1,5 +1,3 @@
-//go:generate sh -c "godoc2md -template ./.doc.template github.com/sbrow/ps > README.md"
-
 package ps
 
 import (
@@ -12,7 +10,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sbrow/ps/runner"
+	"github.com/sbrow/ps/v2/runner"
 )
 
 // The full path to this directory.
@@ -143,6 +141,7 @@ func Quit(save SaveOption) error {
 }
 
 // SaveAs saves the Photoshop document to the given location.
+// // TODO(sbrow): doesn't return error on non-existant path.
 func SaveAs(path string) error {
 	_, err := runner.Run("save", path)
 	return err

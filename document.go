@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -127,19 +128,19 @@ func (d *Document) LayerSet(name string) *LayerSet {
 //
 // TODO(sbrow): Reduce cyclomatic complexity of ActiveDocument().
 func ActiveDocument() (*Document, error) {
-	log.Println("Loading ActiveDoucment")
+	log.Println("Loading ActiveDocument")
 	d := &Document{}
 
-	byt, err := DoJS("activeDocName.jsx")
+	byt, err := DoJS("activeDocFullName.jsx")
 	if err != nil {
 		return nil, err
 	}
-	d.name = strings.TrimRight(string(byt), "\r\n")
+	d.fullName = strings.TrimRight(string(byt), "\r\n")
 	if Mode != Safe {
 		err = d.Restore(d.DumpFile())
 		switch {
 		case os.IsNotExist(err):
-			log.Println("Previous version not found.")
+			log.Printf("Previous version not found: \"%s\"\n", d.DumpFile())
 		case err == nil:
 			return d, err
 		default:
@@ -202,13 +203,17 @@ func (d *Document) DumpFile() string {
 		log.Println(err)
 	}
 	path := filepath.Join(strings.Replace(d.fullName, "~", usr.HomeDir, 1))
+	path = strings.Replace(path, `/`, `\`, -1)
+	path = strings.TrimPrefix(path, `\`)
+	reg := regexp.MustCompile(`(^)([a-zA-z])(:?\\)`)
+	path = reg.ReplaceAllString(path, `$2:\`)
 	return strings.Replace(path, ".psd", ".json", 1)
 }
 
 // Dump saves the document to disk in JSON format.
 func (d *Document) Dump() {
 	log.Println("Dumping to disk")
-	log.Println(d.DumpFile())
+	log.Println(d.DumpFile(), d.FullName())
 	defer d.Save()
 	f, err := os.Create(d.DumpFile())
 	if err != nil {
@@ -248,8 +253,6 @@ func (d *Document) MustExist(name string) Layer {
 // Save saves the Document in place.
 func (d *Document) Save() error {
 	js := fmt.Sprintf("var d=app.open(File('%s'));\nd.save();", d.FullName())
-	if _, err := DoJS("compilejs", js); err != nil {
-		return err
-	}
-	return nil
+	_, err := DoJS("compilejs", js)
+	return err
 }

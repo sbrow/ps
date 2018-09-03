@@ -209,7 +209,7 @@ func (l *LayerSet) SetVisible(b bool) error {
 	return nil
 }
 
-// SetPos snaps the given layerset boundry to the given point.
+// SetPos snaps the given layerset boundary to the given point.
 // Valid options for bound are: "TL", "TR", "BL", "BR"
 func (l *LayerSet) SetPos(x, y int, bound string) {
 	if !l.visible || (x == 0 && y == 0) {
