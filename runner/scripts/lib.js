@@ -110,7 +110,7 @@ function layers(lyrs) {
                          lyr.bounds[3] + ']], "Visible": ' + lyr.visible+', "TextItem": ').replace(/ px/g, "");
         if (lyr.kind == LayerKind.TEXT) {
             str += ('{"Contents": "'+lyr.textItem.contents+'",').replace(/\r/g, '\\r');
-            var size = Number(lyr.textItem.size.replace(/ p[tx]/g, ''));
+            var size = Number((lyr.textItem.size).replace(/ p[tx]/g, ''));
             if (lyr.textItem.size.includes("px")) {
                 size = (size / app.activeDocument.resolution) * 72;
             }
