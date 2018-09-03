@@ -35,7 +35,7 @@ type DocumentJSON struct {
 
 // MarshalJSON returns the Document in JSON format.
 func (d *Document) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&DocumentJSON{Name: d.name, FullName: d.fullName, Height: d.height,
+	return json.Marshal(&DocumentJSON{Name: d.name, Height: d.height,
 		Width: d.width, ArtLayers: d.artLayers, LayerSets: d.layerSets})
 }
 
@@ -130,7 +130,6 @@ func (d *Document) LayerSet(name string) *LayerSet {
 func ActiveDocument() (*Document, error) {
 	log.Println("Loading ActiveDocument")
 	d := &Document{}
-
 	byt, err := DoJS("activeDocFullName.jsx")
 	if err != nil {
 		return nil, err
@@ -181,6 +180,13 @@ func (d *Document) Restore(path string) error {
 	if err == nil {
 		log.Println("Previous version found, loading")
 		err = json.Unmarshal(byt, &d)
+		if err == nil {
+			byt, err := DoJS("activeDocFullName.jsx")
+			if err != nil {
+				return nil, err
+			}
+			d.fullName = strings.TrimRight(string(byt), "\r\n")
+		}
 	}
 	return err
 }
@@ -213,7 +219,7 @@ func (d *Document) DumpFile() string {
 // Dump saves the document to disk in JSON format.
 func (d *Document) Dump() {
 	log.Println("Dumping to disk")
-	log.Println(d.DumpFile(), d.FullName())
+	log.Println(d.DumpFile())
 	defer d.Save()
 	f, err := os.Create(d.DumpFile())
 	if err != nil {
