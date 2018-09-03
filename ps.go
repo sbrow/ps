@@ -27,7 +27,8 @@ func init() {
 // data in the Go Document struct- you will have to implement syncing
 // them yourself.
 func ApplyDataset(name string) error {
-	_, err := DoJS("applyDataset.jsx", name)
+	data, err := DoJS("applyDataset.jsx", name)
+	panic(fmt.Sprint("data:", string(data)))
 	return err
 }
 
